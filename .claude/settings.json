@@ -1,0 +1,10 @@
+{
+  "permissions": {
+    "additionalDirectories": [
+      "c:\\Users\\OPEN_OS\\Desktop\\Collabrix\\collabrix-backend\\src\\main\\java\\com\\collabrix"
+    ],
+    "allow": [
+      "Bash(mvn compile:*)"
+    ]
+  }
+}

@@ -1,0 +1,20 @@
+server:
+  port: 8080
+
+spring:
+  neo4j:
+    uri: bolt://localhost:7687
+    authentication:
+      username: neo4j
+      password: collabrix123
+
+collabrix:
+  jwt:
+    secret: "CollabrixSecretKey2026ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnop"
+    expiration-ms: 86400000
+  cors:
+    allowed-origins: "http://localhost:5500,http://localhost:3000,http://127.0.0.1:5500"
+
+logging:
+  level:
+    com.collabrix: DEBUG
