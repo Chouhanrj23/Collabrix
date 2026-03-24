@@ -86,6 +86,12 @@ public class FeedbackService {
                 .toList();
     }
 
+    public List<FeedbackDto> getGivenFeedback(Long employeeId) {
+        return feedbackRepository.findByFromEmployeeId(employeeId).stream()
+                .map(this::toFeedbackDto)
+                .toList();
+    }
+
     public List<FeedbackDto> getPendingFeedbackRequests(Long employeeId) {
         return feedbackRequestRepository.findByRequestedFromEmployeeIdAndFulfilledFalse(employeeId).stream()
                 .map(fr -> {

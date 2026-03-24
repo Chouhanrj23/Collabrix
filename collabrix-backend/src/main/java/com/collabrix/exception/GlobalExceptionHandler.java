@@ -19,37 +19,42 @@ public class GlobalExceptionHandler {
 
     @ExceptionHandler(UnauthorizedAccessException.class)
     public ResponseEntity<ErrorResponse> handleUnauthorizedAccess(UnauthorizedAccessException ex) {
-        HttpStatus status = HttpStatus.UNAUTHORIZED;
+        HttpStatus status = HttpStatus.FORBIDDEN;
         return ResponseEntity.status(status)
-                .body(new ErrorResponse(status.value(), status.getReasonPhrase(), ex.getMessage(), LocalDateTime.now()));
+                .body(new ErrorResponse(status.value(), status.getReasonPhrase(), ex.getMessage(),
+                        LocalDateTime.now()));
     }
 
     @ExceptionHandler(AccessDeniedException.class)
     public ResponseEntity<ErrorResponse> handleAccessDenied(AccessDeniedException ex) {
         HttpStatus status = HttpStatus.FORBIDDEN;
         return ResponseEntity.status(status)
-                .body(new ErrorResponse(status.value(), status.getReasonPhrase(), ex.getMessage(), LocalDateTime.now()));
+                .body(new ErrorResponse(status.value(), status.getReasonPhrase(), ex.getMessage(),
+                        LocalDateTime.now()));
     }
 
     @ExceptionHandler(ResourceNotFoundException.class)
     public ResponseEntity<ErrorResponse> handleResourceNotFound(ResourceNotFoundException ex) {
         HttpStatus status = HttpStatus.NOT_FOUND;
         return ResponseEntity.status(status)
-                .body(new ErrorResponse(status.value(), status.getReasonPhrase(), ex.getMessage(), LocalDateTime.now()));
+                .body(new ErrorResponse(status.value(), status.getReasonPhrase(), ex.getMessage(),
+                        LocalDateTime.now()));
     }
 
     @ExceptionHandler(HierarchyViolationException.class)
     public ResponseEntity<ErrorResponse> handleHierarchyViolation(HierarchyViolationException ex) {
         HttpStatus status = HttpStatus.BAD_REQUEST;
         return ResponseEntity.status(status)
-                .body(new ErrorResponse(status.value(), status.getReasonPhrase(), ex.getMessage(), LocalDateTime.now()));
+                .body(new ErrorResponse(status.value(), status.getReasonPhrase(), ex.getMessage(),
+                        LocalDateTime.now()));
     }
 
     @ExceptionHandler(DuplicateConnectionException.class)
     public ResponseEntity<ErrorResponse> handleDuplicateConnection(DuplicateConnectionException ex) {
         HttpStatus status = HttpStatus.CONFLICT;
         return ResponseEntity.status(status)
-                .body(new ErrorResponse(status.value(), status.getReasonPhrase(), ex.getMessage(), LocalDateTime.now()));
+                .body(new ErrorResponse(status.value(), status.getReasonPhrase(), ex.getMessage(),
+                        LocalDateTime.now()));
     }
 
     @ExceptionHandler(Exception.class)
@@ -57,6 +62,7 @@ public class GlobalExceptionHandler {
         log.error("Unexpected error occurred", ex);
         HttpStatus status = HttpStatus.INTERNAL_SERVER_ERROR;
         return ResponseEntity.status(status)
-                .body(new ErrorResponse(status.value(), status.getReasonPhrase(), ex.getMessage(), LocalDateTime.now()));
+                .body(new ErrorResponse(status.value(), status.getReasonPhrase(), ex.getMessage(),
+                        LocalDateTime.now()));
     }
 }

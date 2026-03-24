@@ -10,6 +10,7 @@ import com.collabrix.repository.EmployeeRepository;
 import com.collabrix.util.DesignationUtil;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.util.*;
 
@@ -21,12 +22,14 @@ public class GraphService {
     private final ConnectionRepository connectionRepository;
     private final DesignationUtil designationUtil;
 
+    @Transactional(readOnly = true)
     public GraphDto getMyGraph(Long employeeId) {
         Employee employee = employeeRepository.findById(employeeId)
                 .orElseThrow(() -> new ResourceNotFoundException("Employee not found"));
         return buildGraph(employee);
     }
 
+    @Transactional(readOnly = true)
     public GraphDto getEmployeeGraph(Long requesterId, Long targetId) {
         Employee requester = employeeRepository.findById(requesterId)
                 .orElseThrow(() -> new ResourceNotFoundException("Requester not found"));
@@ -40,6 +43,7 @@ public class GraphService {
         return buildGraph(target);
     }
 
+    @Transactional(readOnly = true)
     public ManagerDashboardDto getManagerDashboard(Long managerId) {
         Employee manager = employeeRepository.findById(managerId)
                 .orElseThrow(() -> new ResourceNotFoundException("Manager not found"));
@@ -65,14 +69,38 @@ public class GraphService {
                             req.getProject(),
                             req.getDuration(),
                             req.getCreatedAt(),
-                            req.getResolvedAt()
-                    );
+                            req.getResolvedAt());
                 })
                 .toList();
 
         int totalConnections = connectionRepository.findApprovedConnectionsOf(managerId).size();
 
         return new ManagerDashboardDto(reportees, pendingApprovals, totalConnections);
+    }
+
+    @Transactional(readOnly = true)
+    public GraphDto getFullGraph() {
+        Map<Long, NodeDto> nodeMap = new LinkedHashMap<>();
+        List<EdgeDto> edges = new ArrayList<>();
+
+        // Add all employees as nodes
+        for (Employee emp : employeeRepository.findAll()) {
+            nodeMap.put(emp.getId(), NodeDto.from(emp));
+        }
+
+        // Add all approved connections as edges
+        for (ConnectionRequest conn : connectionRepository.findAllApprovedConnections()) {
+            edges.add(new EdgeDto(
+                    conn.getId(),
+                    conn.getFromEmployeeId(),
+                    conn.getToEmployeeId(),
+                    conn.getRelationshipType().getDisplayName(),
+                    "to",
+                    conn.getRelationshipType(),
+                    conn.getCreatedAt() != null ? conn.getCreatedAt().toLocalDate().toString() : null));
+        }
+
+        return new GraphDto(new ArrayList<>(nodeMap.values()), edges);
     }
 
     private GraphDto buildGraph(Employee centerEmployee) {
@@ -83,10 +111,12 @@ public class GraphService {
         nodeMap.put(centerEmployee.getId(), NodeDto.from(centerEmployee));
 
         // Add direct connections from approved connection requests
-        List<ConnectionRequest> approvedConnections = connectionRepository.findApprovedConnectionsOf(centerEmployee.getId());
+        List<ConnectionRequest> approvedConnections = connectionRepository
+                .findApprovedConnectionsOf(centerEmployee.getId());
         for (ConnectionRequest conn : approvedConnections) {
             Long otherId = conn.getFromEmployeeId().equals(centerEmployee.getId())
-                    ? conn.getToEmployeeId() : conn.getFromEmployeeId();
+                    ? conn.getToEmployeeId()
+                    : conn.getFromEmployeeId();
 
             if (!nodeMap.containsKey(otherId)) {
                 Employee other = employeeRepository.findById(otherId)
@@ -103,8 +133,7 @@ public class GraphService {
                     conn.getRelationshipType().getDisplayName(),
                     "to",
                     conn.getRelationshipType(),
-                    conn.getCreatedAt() != null ? conn.getCreatedAt().toLocalDate().toString() : null
-            ));
+                    conn.getCreatedAt() != null ? conn.getCreatedAt().toLocalDate().toString() : null));
         }
 
         // Add reportees' connections (filtered by canViewConnections)
@@ -114,13 +143,16 @@ public class GraphService {
                 nodeMap.put(reportee.getId(), NodeDto.from(reportee));
             }
 
-            List<ConnectionRequest> reporteeConnections = connectionRepository.findApprovedConnectionsOf(reportee.getId());
+            List<ConnectionRequest> reporteeConnections = connectionRepository
+                    .findApprovedConnectionsOf(reportee.getId());
             for (ConnectionRequest conn : reporteeConnections) {
                 Long otherId = conn.getFromEmployeeId().equals(reportee.getId())
-                        ? conn.getToEmployeeId() : conn.getFromEmployeeId();
+                        ? conn.getToEmployeeId()
+                        : conn.getFromEmployeeId();
 
                 Employee other = employeeRepository.findById(otherId).orElse(null);
-                if (other == null) continue;
+                if (other == null)
+                    continue;
 
                 // Filter: exclude connections to employees senior to the center employee
                 if (!designationUtil.canViewConnections(centerEmployee.getDesignation(), other.getDesignation())) {
@@ -141,8 +173,7 @@ public class GraphService {
                             conn.getRelationshipType().getDisplayName(),
                             "to",
                             conn.getRelationshipType(),
-                            conn.getCreatedAt() != null ? conn.getCreatedAt().toLocalDate().toString() : null
-                    ));
+                            conn.getCreatedAt() != null ? conn.getCreatedAt().toLocalDate().toString() : null));
                 }
             }
         }

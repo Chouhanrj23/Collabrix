@@ -15,7 +15,8 @@ public record EmployeeDto(
         Grade grade,
         String account,
         String project,
-        LocalDate joiningDate
+        LocalDate joiningDate,
+        String profileImageUrl
 ) {
     public static EmployeeDto from(Employee e) {
         return new EmployeeDto(
@@ -27,7 +28,8 @@ public record EmployeeDto(
                 e.getGrade(),
                 e.getAccount(),
                 e.getProject(),
-                e.getJoiningDate()
+                e.getJoiningDate(),
+                e.getProfileImageUrl()
         );
     }
 }

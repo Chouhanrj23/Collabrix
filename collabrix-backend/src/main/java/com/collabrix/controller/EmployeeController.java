@@ -6,8 +6,10 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile;
 
 import java.util.List;
+import java.util.Map;
 
 @RestController
 @RequestMapping("/api/employees")
@@ -39,6 +41,12 @@ public class EmployeeController {
     @GetMapping("/search")
     public ResponseEntity<List<EmployeeDto>> searchEmployees(@RequestParam String q) {
         return ResponseEntity.ok(employeeService.searchEmployees(q));
+    }
+
+    @PostMapping("/upload-profile-pic")
+    public ResponseEntity<Map<String, String>> uploadProfilePicture(@RequestParam("file") MultipartFile file) {
+        String url = employeeService.uploadProfilePicture(getCurrentEmployeeId(), file);
+        return ResponseEntity.ok(Map.of("profileImageUrl", url));
     }
 
     private Long getCurrentEmployeeId() {
