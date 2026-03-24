@@ -20,6 +20,11 @@ public class GraphController {
         return ResponseEntity.ok(graphService.getMyGraph(getCurrentEmployeeId()));
     }
 
+    @GetMapping("/full")
+    public ResponseEntity<GraphDto> getFullGraph() {
+        return ResponseEntity.ok(graphService.getFullGraph());
+    }
+
     @GetMapping("/employee/{id}")
     public ResponseEntity<GraphDto> getEmployeeGraph(@PathVariable Long id) {
         return ResponseEntity.ok(graphService.getEmployeeGraph(getCurrentEmployeeId(), id));

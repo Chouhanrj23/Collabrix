@@ -19,4 +19,7 @@ public interface ConnectionRepository extends Neo4jRepository<ConnectionRequest,
 
     @Query("MATCH (cr:ConnectionRequest) WHERE cr.status = 'PENDING' AND cr.fromEmployeeId = $fromId AND cr.toEmployeeId = $toId AND cr.relationshipType = $relType RETURN cr LIMIT 1")
     Optional<ConnectionRequest> findDuplicatePendingRequest(Long fromId, Long toId, String relType);
+
+    @Query("MATCH (cr:ConnectionRequest) WHERE cr.status = 'APPROVED' RETURN cr")
+    List<ConnectionRequest> findAllApprovedConnections();
 }

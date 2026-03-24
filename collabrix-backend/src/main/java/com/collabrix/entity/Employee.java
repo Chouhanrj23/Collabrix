@@ -46,6 +46,7 @@ public class Employee {
     private String account;
     private String project;
     private LocalDate joiningDate;
+    private String profileImageUrl;
 
     @Builder.Default
     private boolean active = true;

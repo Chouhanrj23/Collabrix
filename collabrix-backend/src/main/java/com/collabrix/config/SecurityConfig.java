@@ -31,9 +31,11 @@ public class SecurityConfig {
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers("POST", "/api/auth/login").permitAll()
                         .requestMatchers("POST", "/api/auth/register").permitAll()
-                        .requestMatchers("OPTIONS", "/**").permitAll()
-                        .anyRequest().authenticated()
-                )
+                        .requestMatchers("/uploads/**").permitAll()
+                        .requestMatchers(org.springframework.http.HttpMethod.OPTIONS, "/**").permitAll()
+                        .anyRequest().authenticated())
+                .exceptionHandling(e -> e.authenticationEntryPoint((request, response, authException) -> response
+                        .sendError(jakarta.servlet.http.HttpServletResponse.SC_UNAUTHORIZED, "Unauthorized")))
                 .addFilterBefore(jwtAuthFilter, UsernamePasswordAuthenticationFilter.class);
 
         return http.build();

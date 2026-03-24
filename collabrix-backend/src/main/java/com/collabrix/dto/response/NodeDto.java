@@ -12,7 +12,8 @@ public record NodeDto(
         String color,
         String account,
         String project,
-        String title
+        String title,
+        String profileImageUrl
 ) {
     public static NodeDto from(Employee e) {
         return new NodeDto(
@@ -23,7 +24,8 @@ public record NodeDto(
                 colorFor(e.getDesignation()),
                 e.getAccount(),
                 e.getProject(),
-                e.getDesignation().getDisplayName() + " - " + e.getAccount()
+                e.getDesignation().getDisplayName() + " - " + e.getAccount(),
+                e.getProfileImageUrl()
         );
     }
 
