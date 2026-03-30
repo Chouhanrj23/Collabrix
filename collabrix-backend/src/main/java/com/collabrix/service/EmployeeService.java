@@ -47,8 +47,8 @@ public class EmployeeService {
                 .orElseThrow(() -> new ResourceNotFoundException("Employee not found with id: " + id));
     }
 
-    public List<String> getDistinctAccounts() {
-        return employeeRepository.findDistinctAccounts();
+    public List<String> getDistinctDepartments() {
+        return employeeRepository.findDistinctDepartments();
     }
 
     public List<EmployeeDto> getDirectReportees(Long managerId) {

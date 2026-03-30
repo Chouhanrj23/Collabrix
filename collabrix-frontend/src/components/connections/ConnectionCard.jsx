@@ -23,8 +23,8 @@ export default memo(function ConnectionCard({ connection }) {
       <div className="connection-card-info">
         <div className="connection-card-name">{other?.name ?? '—'}</div>
         <DesignationBadge designation={other?.designation} />
-        {other?.account && (
-          <div className="connection-card-meta">{other.account} · {other.project}</div>
+        {other?.department && (
+          <div className="connection-card-meta">{other.department}</div>
         )}
         <div className="connection-card-tags">
           <RelationshipBadge type={connection.relationshipType} />

@@ -37,7 +37,7 @@ export default function LoginPage() {
       <div className="login-card">
         <div className="login-card-header">
           <h2>Welcome back</h2>
-          <p className="text-muted">Sign in to your account to continue</p>
+          <p className="text-muted">Sign in to continue</p>
         </div>
 
         <form className="login-form" onSubmit={handleSubmit} noValidate>

@@ -1,4 +1,4 @@
-import { useEffect, useState, useCallback, memo } from 'react'
+import { useEffect, useState, useCallback, memo, useMemo } from 'react'
 import { useAuth } from '../context/AuthContext'
 import { graphService } from '../api/graphService'
 import { connectionService } from '../api/connectionService'
@@ -26,9 +26,15 @@ export default function DashboardPage() {
 
   useEffect(() => {
     // Full org graph — fetched separately so the network renders ASAP
-    graphService.getFullGraph()
-      .then(setGraphData)
-      .catch(() => setError('Failed to load collaboration graph.'))
+    graphService.getVisibleGraph()
+      .then(data => {
+        console.log('Dashboard graphData received:', data);
+        setGraphData(data);
+      })
+      .catch(err => {
+        console.error('Dashboard graphData error:', err);
+        setError('Failed to load collaboration graph.');
+      })
       .finally(() => setGraphLoading(false))
 
     // All side-panel data in parallel
@@ -38,6 +44,7 @@ export default function DashboardPage() {
       connectionService.getMy(),
     ])
       .then(([pendingList, feedback, allConnections]) => {
+        console.log('Dashboard side-data received:', { pendingList, feedback, allConnections });
         const approved = allConnections.filter((c) => c.status === 'APPROVED').length
         const avgRating = feedback.length
           ? (feedback.reduce((sum, f) => sum + f.rating, 0) / feedback.length).toFixed(1)
@@ -52,7 +59,10 @@ export default function DashboardPage() {
           avgRating,
         })
       })
-      .catch(() => setError('Failed to load dashboard data.'))
+      .catch(err => {
+        console.error('Dashboard side-data error:', err);
+        setError('Failed to load dashboard data.');
+      })
       .finally(() => setLoading(false))
   }, [])
 
@@ -79,7 +89,7 @@ export default function DashboardPage() {
           <h2 className="text-xl font-bold text-gray-900 tracking-tight">
             Welcome back, {user?.name?.split(' ')[0]}
           </h2>
-          <p className="text-sm text-gray-400 mt-1">{today}</p>
+          <p className="text-sm text-gray-600 mt-1">{today}</p>
         </div>
         <div className="flex items-center gap-3">
           <span
@@ -128,7 +138,7 @@ export default function DashboardPage() {
       {/* ── Stats row ───────────────────────────────────────────────────────── */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
         <StatCard
-          label="Total Connections"
+          label="Total Direct Connections"
           value={loading ? '…' : (stats?.connections ?? 0)}
           icon={<IconLink />}
           iconBg="bg-blue-50"
@@ -163,6 +173,9 @@ export default function DashboardPage() {
         />
       </div>
 
+      {/* ── Feedback Summary ─────────────────────────────────────────────────── */}
+      <FeedbackSummary feedback={receivedFeedback} loading={loading} />
+
       {/* ── Main grid: graph + side panel ───────────────────────────────────── */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-5 items-start">
 
@@ -171,11 +184,11 @@ export default function DashboardPage() {
           <div className="px-5 py-4 border-b border-gray-100 flex items-center justify-between flex-shrink-0">
             <div>
               <h3 className="text-sm font-semibold text-gray-900">Organization Network</h3>
-              <p className="text-xs text-gray-400 mt-0.5">
+              <p className="text-xs text-gray-600 mt-0.5">
                 All employees and their connections across the organisation
               </p>
             </div>
-            <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-gray-50 text-xs text-gray-400">
+            <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-gray-50 text-xs text-gray-600">
               <span className="w-1.5 h-1.5 rounded-full bg-emerald-400" />
               Live
             </div>
@@ -185,12 +198,41 @@ export default function DashboardPage() {
               graphData={graphData}
               loading={graphLoading}
               currentUserId={user?.employeeId}
+              currentUserDesignation={user?.designation}
             />
           </div>
         </div>
 
         {/* Side panel — spans 4 cols */}
         <div className="lg:col-span-4 flex flex-col gap-5">
+
+          {/* ── Recent feedback ── */}
+          <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden transition-all duration-200 hover:shadow-md">
+            <div className="px-5 py-4 border-b border-gray-100">
+              <h3 className="text-sm font-semibold text-gray-900">Recent Feedback</h3>
+            </div>
+
+            {loading ? (
+              <SidebarSkeleton rows={2} />
+            ) : receivedFeedback.length === 0 ? (
+              <EmptyState
+                icon={<IconChat />}
+                title="No feedback yet"
+                subtitle="Feedback you receive will appear here."
+              />
+            ) : (
+              <div className="divide-y divide-gray-50">
+                {receivedFeedback.slice(0, 3).map((fb) => (
+                  <FeedbackRow key={fb.id} feedback={fb} />
+                ))}
+                {receivedFeedback.length > 3 && (
+                  <p className="px-5 py-3 text-xs text-gray-700 text-center">
+                    +{receivedFeedback.length - 3} more — visit Feedback to see all
+                  </p>
+                )}
+              </div>
+            )}
+          </div>
 
           {/* ── Pending connection requests ── */}
           <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden transition-all duration-200 hover:shadow-md">
@@ -222,42 +264,145 @@ export default function DashboardPage() {
                   </div>
                 ))}
                 {pending.length > 5 && (
-                  <p className="px-5 py-3 text-xs text-gray-400 text-center">
+                  <p className="px-5 py-3 text-xs text-gray-700 text-center">
                     +{pending.length - 5} more — visit My Connections to see all
                   </p>
                 )}
               </div>
             )}
           </div>
+        </div>
+      </div>
+    </div>
+  )
+}
 
-          {/* ── Recent feedback ── */}
-          <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden transition-all duration-200 hover:shadow-md">
-            <div className="px-5 py-4 border-b border-gray-100">
-              <h3 className="text-sm font-semibold text-gray-900">Recent Feedback</h3>
+// ── FeedbackSummary ───────────────────────────────────────────────────────────
+
+const POSITIVE_KEYWORDS = ['great', 'strong', 'excellent', 'good', 'helpful', 'supportive',
+  'collaborative', 'impressive', 'outstanding', 'proactive', 'reliable', 'quality',
+  'delivers', 'effective', 'communicates', 'leadership', 'inspires', 'mentor']
+
+const NEGATIVE_KEYWORDS = ['improve', 'needs', 'delay', 'issue', 'better', 'slow',
+  'documentation', 'slight', 'inconsistent', 'unclear']
+
+function FeedbackSummary({ feedback, loading }) {
+  const summary = useMemo(() => {
+    if (!feedback?.length) return null
+
+    const totalFeedback = feedback.length
+    const avgRating = (feedback.reduce((sum, f) => sum + f.rating, 0) / totalFeedback)
+
+    const strengths = []
+    const improvements = []
+
+    for (const f of feedback) {
+      const text = (f.comment ?? '').toLowerCase()
+      const isPositive = POSITIVE_KEYWORDS.some((k) => text.includes(k))
+      const isNegative = NEGATIVE_KEYWORDS.some((k) => text.includes(k))
+
+      if (isPositive && strengths.length < 3) strengths.push(f.comment)
+      if (isNegative && improvements.length < 3) improvements.push(f.comment)
+      if (strengths.length >= 3 && improvements.length >= 3) break
+    }
+
+    return { totalFeedback, avgRating: avgRating.toFixed(1), strengths, improvements }
+  }, [feedback])
+
+  if (loading) {
+    return (
+      <div className="bg-white rounded-2xl border border-gray-200 shadow-sm p-6 animate-pulse">
+        <div className="flex items-center justify-between mb-5">
+          <div className="space-y-2">
+            <div className="h-5 w-44 bg-gray-100 rounded-lg" />
+            <div className="h-3 w-64 bg-gray-100 rounded-lg" />
+          </div>
+          <div className="h-10 w-32 bg-gray-100 rounded-xl" />
+        </div>
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          {[1, 2].map((i) => (
+            <div key={i} className="space-y-3">
+              <div className="h-4 bg-gray-100 rounded-lg w-1/3" />
+              <div className="h-4 bg-gray-100 rounded-lg w-full" />
+              <div className="h-4 bg-gray-100 rounded-lg w-5/6" />
+              <div className="h-4 bg-gray-100 rounded-lg w-4/5" />
             </div>
+          ))}
+        </div>
+      </div>
+    )
+  }
 
-            {loading ? (
-              <SidebarSkeleton rows={2} />
-            ) : receivedFeedback.length === 0 ? (
-              <EmptyState
-                icon={<IconChat />}
-                title="No feedback yet"
-                subtitle="Feedback you receive will appear here."
-              />
-            ) : (
-              <div className="divide-y divide-gray-50">
-                {receivedFeedback.slice(0, 3).map((fb) => (
-                  <FeedbackRow key={fb.id} feedback={fb} />
-                ))}
-                {receivedFeedback.length > 3 && (
-                  <p className="px-5 py-3 text-xs text-gray-400 text-center">
-                    +{receivedFeedback.length - 3} more — visit Feedback to see all
-                  </p>
-                )}
-              </div>
-            )}
+  if (!summary) {
+    return (
+      <div className="bg-white rounded-2xl border border-gray-200 shadow-sm px-6 py-10 flex flex-col items-center gap-3 text-center">
+        <div className="w-12 h-12 rounded-2xl bg-gray-50 flex items-center justify-center text-gray-300 mb-1">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" className="w-6 h-6">
+            <path d="M12 2l3.09 6.26L22 9.27l-5 4.87L18.18 21 12 17.77 5.82 21 7 14.14 2 9.27l6.91-1.01L12 2z" />
+          </svg>
+        </div>
+        <p className="text-base font-semibold text-gray-700">No Feedback Yet</p>
+        <p className="text-sm text-gray-700 leading-relaxed max-w-xs">
+          Feedback summary will appear here once you receive feedback from your colleagues.
+        </p>
+      </div>
+    )
+  }
+
+  const { totalFeedback, avgRating, strengths, improvements } = summary
+  const filledStars = Math.round(Number(avgRating))
+
+  const allInsights = [...strengths, ...improvements].slice(0, 5)
+
+  return (
+    <div className="bg-white rounded-2xl border border-gray-200 shadow-sm transition-all duration-200 hover:shadow-md overflow-hidden">
+
+      {/* ── Header ─────────────────────────────────────────────────────────── */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 px-6 py-5 border-b border-gray-100">
+        <div>
+          <h3 className="text-lg font-bold text-gray-900">Feedback Summary</h3>
+          <p className="text-sm text-gray-700 mt-0.5 leading-relaxed">
+            Key insights extracted from your received feedback
+          </p>
+        </div>
+
+        {/* Rating pill — enlarged */}
+        <div className="flex items-center gap-3 bg-amber-50 border border-amber-200 rounded-2xl px-4 py-3 self-start sm:self-auto shadow-sm">
+          <div>
+            <div className="flex items-center gap-0.5 mb-0.5">
+              {Array.from({ length: 5 }, (_, i) => (
+                <svg key={i} viewBox="0 0 24 24" className={`w-4 h-4 ${i < filledStars ? 'text-yellow-500' : 'text-gray-200'}`} fill="currentColor">
+                  <path d="M12 2l3.09 6.26L22 9.27l-5 4.87L18.18 21 12 17.77 5.82 21 7 14.14 2 9.27l6.91-1.01L12 2z" />
+                </svg>
+              ))}
+            </div>
+            <p className="text-[11px] text-amber-600 font-medium text-center tabular-nums">
+              {totalFeedback} review{totalFeedback !== 1 ? 's' : ''}
+            </p>
+          </div>
+          <div className="flex items-end gap-1 leading-none">
+            <span className="text-3xl font-bold text-amber-700 tabular-nums leading-none">{avgRating}</span>
+            <span className="text-sm font-semibold text-amber-500 mb-0.5">/ 5</span>
           </div>
         </div>
+      </div>
+
+      {/* ── Unified Insights Body ────────────────────────────────────────── */}
+      <div className="px-6 py-5">
+        {allInsights.length > 0 ? (
+          <ul className="space-y-3">
+            {allInsights.map((insight, i) => (
+              <li key={i} className="flex items-start gap-3">
+                <span className="flex-shrink-0 mt-2 w-1.5 h-1.5 rounded-full bg-gray-400"></span>
+                <p className="text-base text-gray-700 leading-relaxed">{insight}</p>
+              </li>
+            ))}
+          </ul>
+        ) : (
+          <p className="text-base text-gray-700 italic leading-relaxed">
+            Feedback summary will appear once feedback is received.
+          </p>
+        )}
       </div>
     </div>
   )
@@ -278,13 +423,13 @@ const StatCard = memo(function StatCard({ label, value, icon, iconBg, iconColor,
         <span className="w-5 h-5">{icon}</span>
       </div>
       <div className="min-w-0">
-        <p className="text-[11px] font-medium text-gray-400 uppercase tracking-wider truncate">{label}</p>
+        <p className="text-[11px] font-medium text-gray-600 uppercase tracking-wider truncate">{label}</p>
         {loading ? (
           <div className="h-7 w-14 bg-gray-100 rounded-lg animate-pulse mt-1" />
         ) : (
           <p className="text-2xl font-bold text-gray-900 leading-tight mt-0.5 tabular-nums">
             {value}
-            {suffix && <span className="text-sm font-normal text-gray-400">{suffix}</span>}
+            {suffix && <span className="text-sm font-normal text-gray-600">{suffix}</span>}
           </p>
         )}
       </div>
@@ -315,7 +460,7 @@ function FeedbackRow({ feedback }) {
             <span className="text-sm font-semibold text-gray-800 truncate">
               {from?.name}
             </span>
-            <span className="text-[11px] text-gray-400 flex-shrink-0">
+            <span className="text-[11px] text-gray-600 flex-shrink-0">
               {formatDate(feedback.feedbackDate)}
             </span>
           </div>
@@ -332,12 +477,12 @@ function FeedbackRow({ feedback }) {
                 <path d="M12 2l3.09 6.26L22 9.27l-5 4.87L18.18 21 12 17.77 5.82 21 7 14.14 2 9.27l6.91-1.01L12 2z" />
               </svg>
             ))}
-            <span className="text-[11px] text-gray-400 ml-1.5 font-medium">{feedback.rating}/5</span>
+            <span className="text-[11px] text-gray-600 ml-1.5 font-medium">{feedback.rating}/5</span>
           </div>
 
           {/* Comment */}
           {feedback.comment && (
-            <p className="text-xs text-gray-500 mt-1.5 line-clamp-2 leading-relaxed">
+            <p className="text-xs text-gray-700 mt-1.5 line-clamp-2 leading-relaxed">
               {feedback.comment}
             </p>
           )}
@@ -355,8 +500,8 @@ function EmptyState({ icon, title, subtitle }) {
       <div className="w-11 h-11 rounded-xl bg-gray-50 flex items-center justify-center text-gray-300">
         <span className="w-5 h-5">{icon}</span>
       </div>
-      <p className="text-sm font-medium text-gray-500">{title}</p>
-      {subtitle && <p className="text-xs text-gray-400">{subtitle}</p>}
+      <p className="text-sm font-medium text-gray-700">{title}</p>
+      {subtitle && <p className="text-xs text-gray-600">{subtitle}</p>}
     </div>
   )
 }

@@ -2,15 +2,18 @@ package com.collabrix.controller;
 
 import com.collabrix.dto.response.EmployeeDto;
 import com.collabrix.service.EmployeeService;
+import jakarta.validation.constraints.Size;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.util.List;
 import java.util.Map;
 
+@Validated
 @RestController
 @RequestMapping("/api/employees")
 @RequiredArgsConstructor
@@ -28,9 +31,9 @@ public class EmployeeController {
         return ResponseEntity.ok(employeeService.getEmployeeById(id));
     }
 
-    @GetMapping("/accounts")
-    public ResponseEntity<List<String>> getDistinctAccounts() {
-        return ResponseEntity.ok(employeeService.getDistinctAccounts());
+    @GetMapping("/departments")
+    public ResponseEntity<List<String>> getDistinctDepartments() {
+        return ResponseEntity.ok(employeeService.getDistinctDepartments());
     }
 
     @GetMapping("/{id}/reportees")
@@ -39,7 +42,7 @@ public class EmployeeController {
     }
 
     @GetMapping("/search")
-    public ResponseEntity<List<EmployeeDto>> searchEmployees(@RequestParam String q) {
+    public ResponseEntity<List<EmployeeDto>> searchEmployees(@RequestParam @Size(max = 100) String q) {
         return ResponseEntity.ok(employeeService.searchEmployees(q));
     }
 

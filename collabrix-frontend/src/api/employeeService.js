@@ -5,10 +5,10 @@ import api from './axios'
  * Returns: EmployeeDto[]
  *
  * GET /api/employees/{id}
- * Returns: EmployeeDto { id, username, name, email, designation, grade, account, project, joiningDate }
+ * Returns: EmployeeDto { id, username, name, email, designation, grade, department, joiningDate }
  *
- * GET /api/employees/accounts
- * Returns: string[]  (distinct account names)
+ * GET /api/employees/departments
+ * Returns: string[]  (distinct department names)
  *
  * GET /api/employees/{id}/reportees
  * Returns: EmployeeDto[]  (direct reports of the given employee)
@@ -23,8 +23,8 @@ export const employeeService = {
   getById: (id) =>
     api.get(`/employees/${id}`).then((r) => r.data),
 
-  getAccounts: () =>
-    api.get('/employees/accounts').then((r) => r.data),
+  getDepartments: () =>
+    api.get('/employees/departments').then((r) => r.data),
 
   getReportees: (id) =>
     api.get(`/employees/${id}/reportees`).then((r) => r.data),

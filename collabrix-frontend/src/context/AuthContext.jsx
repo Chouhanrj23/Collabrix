@@ -1,7 +1,6 @@
 import { createContext, useContext, useState, useCallback } from 'react'
 import { authService } from '../api/authService'
-const TOKEN_KEY = 'collabrix_token'
-const USER_KEY = 'collabrix_user'
+import { TOKEN_KEY, USER_KEY } from '../api/storageKeys'
 
 const AuthContext = createContext(null)
 

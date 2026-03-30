@@ -47,8 +47,7 @@ class ConnectionControllerIT {
                 {
                     "targetEmail": "kratika@collabrix.com",
                     "relationshipType": "REPORTING_MANAGER",
-                    "account": "TechCorp India",
-                    "project": "ERP Modernisation",
+                    "department": "Software Engineering",
                     "duration": "2 years"
                 }
                 """;

@@ -13,6 +13,7 @@ const MyConnectionsPage = lazy(() => import('./pages/MyConnectionsPage'))
 const AddConnectionPage = lazy(() => import('./pages/AddConnectionPage'))
 const FeedbackPage      = lazy(() => import('./pages/FeedbackPage'))
 const EmployeesPage     = lazy(() => import('./pages/EmployeesPage'))
+const ProjectsPage      = lazy(() => import('./pages/ProjectsPage'))
 
 export default function App() {
   return (
@@ -37,6 +38,7 @@ export default function App() {
             <Route path="/add-connection" element={<AddConnectionPage />} />
             <Route path="/feedback"       element={<FeedbackPage />} />
             <Route path="/employees"      element={<EmployeesPage />} />
+            <Route path="/projects"       element={<ProjectsPage />} />
           </Route>
 
           {/* Fallback */}

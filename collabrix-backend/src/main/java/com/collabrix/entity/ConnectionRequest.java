@@ -1,5 +1,7 @@
 package com.collabrix.entity;
 
+import com.collabrix.util.FlexibleDateStringConverter;
+
 import com.collabrix.enums.ConnectionStatus;
 import com.collabrix.enums.RelationshipType;
 import lombok.AllArgsConstructor;
@@ -15,7 +17,6 @@ import org.springframework.data.neo4j.core.schema.Node;
 import org.springframework.lang.NonNull;
 import org.springframework.lang.Nullable;
 
-import java.time.LocalDateTime;
 import java.util.UUID;
 
 @Node("ConnectionRequest")
@@ -39,11 +40,17 @@ public class ConnectionRequest {
     @Builder.Default
     private ConnectionStatus status = ConnectionStatus.PENDING;
 
+    private String department;
     private String account;
     private String project;
-    private String duration;
-    private LocalDateTime createdAt;
-    private LocalDateTime resolvedAt;
+    @ConvertWith(converter = FlexibleDateStringConverter.class)
+    private String startDate;
+    @ConvertWith(converter = FlexibleDateStringConverter.class)
+    private String endDate;
+    @ConvertWith(converter = FlexibleDateStringConverter.class)
+    private String createdAt;
+    @ConvertWith(converter = FlexibleDateStringConverter.class)
+    private String resolvedAt;
 
     // --- Attribute Converters ---
 

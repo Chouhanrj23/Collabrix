@@ -62,6 +62,11 @@ public class FeedbackController {
         return ResponseEntity.ok(feedbackService.getReceivedFeedback(employeeId));
     }
 
+    @GetMapping("/employee/{employeeId}")
+    public ResponseEntity<List<FeedbackDto>> getFeedbackForEmployee(@PathVariable Long employeeId) {
+        return ResponseEntity.ok(feedbackService.getReceivedFeedback(employeeId));
+    }
+
     @GetMapping("/pending-requests")
     public ResponseEntity<List<FeedbackDto>> getPendingFeedbackRequests() {
         return ResponseEntity.ok(feedbackService.getPendingFeedbackRequests(getCurrentEmployeeId()));

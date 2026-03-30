@@ -51,8 +51,7 @@ class ConnectionServiceTest {
                 .passwordHash("hash")
                 .designation(designation)
                 .grade(Grade.fromDesignation(designation))
-                .account("TechCorp India")
-                .project("ERP Modernisation")
+                .department("Software Engineering")
                 .joiningDate(LocalDate.of(2020, 1, 1))
                 .active(true)
                 .build();
@@ -69,7 +68,7 @@ class ConnectionServiceTest {
         when(connectionRepository.save(any(ConnectionRequest.class))).thenAnswer(inv -> inv.getArgument(0));
 
         ConnectionRequestDto dto = new ConnectionRequestDto("kratika@collabrix.com",
-                RelationshipType.REPORTING_MANAGER, "TechCorp India", "ERP Modernisation", "2 years");
+                RelationshipType.REPORTING_MANAGER, "Software Engineering", "MS", "GS", LocalDate.now(), LocalDate.now());
 
         ConnectionRequestResponseDto result = connectionService.createRequest(1L, dto);
 
@@ -90,7 +89,7 @@ class ConnectionServiceTest {
                 .thenReturn(Optional.of(ConnectionRequest.builder().build()));
 
         ConnectionRequestDto dto = new ConnectionRequestDto("kratika@collabrix.com",
-                RelationshipType.REPORTING_MANAGER, "TechCorp India", "ERP Modernisation", "2 years");
+                RelationshipType.REPORTING_MANAGER, "Software Engineering", "MS", "GS", LocalDate.now(), LocalDate.now());
 
         assertThrows(DuplicateConnectionException.class,
                 () -> connectionService.createRequest(1L, dto));
@@ -104,7 +103,7 @@ class ConnectionServiceTest {
                 .toEmployeeId(2L)
                 .relationshipType(RelationshipType.REPORTING_MANAGER)
                 .status(ConnectionStatus.PENDING)
-                .createdAt(LocalDateTime.now())
+                .createdAt(LocalDateTime.now().toString())
                 .build();
 
         Employee from = buildEmployee(1L, "Raj Chouhan", "raj@collabrix.com", Designation.CONSULTANT);

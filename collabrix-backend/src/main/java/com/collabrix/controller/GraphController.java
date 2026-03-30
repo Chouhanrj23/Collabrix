@@ -2,6 +2,9 @@ package com.collabrix.controller;
 
 import com.collabrix.dto.response.GraphDto;
 import com.collabrix.dto.response.ManagerDashboardDto;
+import com.collabrix.enums.Designation;
+import com.collabrix.exception.UnauthorizedAccessException;
+import com.collabrix.repository.EmployeeRepository;
 import com.collabrix.service.GraphService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
@@ -14,6 +17,7 @@ import org.springframework.web.bind.annotation.*;
 public class GraphController {
 
     private final GraphService graphService;
+    private final EmployeeRepository employeeRepository;
 
     @GetMapping("/me")
     public ResponseEntity<GraphDto> getMyGraph() {
@@ -22,8 +26,21 @@ public class GraphController {
 
     @GetMapping("/full")
     public ResponseEntity<GraphDto> getFullGraph() {
+        long currentId = getCurrentEmployeeId();
+        Designation designation = employeeRepository.findById(currentId)
+                .map(e -> e.getDesignation())
+                .orElseThrow(() -> new UnauthorizedAccessException("Unauthorized"));
+        if (designation.getHierarchyLevel() > Designation.MANAGER.getHierarchyLevel()) {
+            throw new UnauthorizedAccessException("Full graph access is restricted to managers and above");
+        }
         return ResponseEntity.ok(graphService.getFullGraph());
     }
+
+    @GetMapping("/visible")
+    public ResponseEntity<GraphDto> getVisibleGraph() {
+        return ResponseEntity.ok(graphService.getVisibleGraphForUser(getCurrentEmployeeId()));
+    }
+
 
     @GetMapping("/employee/{id}")
     public ResponseEntity<GraphDto> getEmployeeGraph(@PathVariable Long id) {

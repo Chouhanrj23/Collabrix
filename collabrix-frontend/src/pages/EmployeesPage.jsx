@@ -4,7 +4,7 @@ import { graphService } from '../api/graphService'
 import { useAuth } from '../context/AuthContext'
 import Alert from '../components/common/Alert'
 import CollaborationGraph from '../components/graph/CollaborationGraph'
-import { DesignationBadge, GradeBadge } from '../components/common/Badge'
+import { DesignationBadge } from '../components/common/Badge'
 import { DESIGNATION_COLORS, DESIGNATION_LEVELS, isSeniorTo } from '../utils/designationUtils'
 import { getInitials, formatDate } from '../utils/formatters'
 
@@ -13,18 +13,18 @@ export default function EmployeesPage() {
 
   // ── Data state ───────────────────────────────────────────────────────────
   const [employees, setEmployees] = useState([])
-  const [loading,   setLoading]   = useState(true)
-  const [error,     setError]     = useState('')
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState('')
 
   // ── Filter state ─────────────────────────────────────────────────────────
-  const [search,             setSearch]             = useState('')
-  const [filterDesignation,  setFilterDesignation]  = useState('')
+  const [search, setSearch] = useState('')
+  const [filterDesignation, setFilterDesignation] = useState('')
 
   // ── Modal state ──────────────────────────────────────────────────────────
-  const [modalEmp,          setModalEmp]          = useState(null)
-  const [modalOpen,         setModalOpen]         = useState(false)
-  const [empGraph,          setEmpGraph]          = useState(null)
-  const [empGraphLoading,   setEmpGraphLoading]   = useState(false)
+  const [modalEmp, setModalEmp] = useState(null)
+  const [modalOpen, setModalOpen] = useState(false)
+  const [empGraph, setEmpGraph] = useState(null)
+  const [empGraphLoading, setEmpGraphLoading] = useState(false)
 
   // ── Fetch all employees on mount ─────────────────────────────────────────
   useEffect(() => {
@@ -47,7 +47,7 @@ export default function EmployeesPage() {
       const matchSearch = !q ||
         e.name.toLowerCase().includes(q) ||
         e.email.toLowerCase().includes(q) ||
-        (e.account ?? '').toLowerCase().includes(q)
+        (e.department ?? '').toLowerCase().includes(q)
       const matchDesig = !filterDesignation || e.designation === filterDesignation
       return matchSearch && matchDesig
     })
@@ -84,7 +84,7 @@ export default function EmployeesPage() {
       <div className="px-6 pt-6 pb-4 bg-white border-b border-gray-200">
         <h2 className="text-xl font-bold text-gray-900">Employees</h2>
         {!loading && (
-          <p className="text-sm text-gray-400 mt-0.5">
+          <p className="text-base text-gray-600 leading-relaxed mt-0.5">
             {employees.length} employee{employees.length !== 1 ? 's' : ''} in the organisation
           </p>
         )}
@@ -98,20 +98,20 @@ export default function EmployeesPage() {
         <div className="flex flex-col sm:flex-row gap-3">
           {/* Search */}
           <div className="relative flex-1">
-            <span className="absolute inset-y-0 left-3 flex items-center text-gray-400 pointer-events-none">
+            <span className="absolute inset-y-0 left-3 flex items-center text-gray-600 pointer-events-none">
               <IconSearch />
             </span>
             <input
               type="text"
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              placeholder="Search by name, email, or account…"
+              placeholder="Search by name, email, or department…"
               className="w-full pl-9 pr-9 py-2.5 bg-white border border-gray-200 rounded-xl text-sm text-gray-800 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-brand-sidebar/30 focus:border-brand-sidebar"
             />
             {search && (
               <button
                 onClick={() => setSearch('')}
-                className="absolute inset-y-0 right-3 flex items-center text-gray-400 hover:text-gray-600"
+                className="absolute inset-y-0 right-3 flex items-center text-gray-600 hover:text-gray-600"
                 aria-label="Clear search"
               >
                 <IconX />
@@ -134,7 +134,7 @@ export default function EmployeesPage() {
 
         {/* Results count */}
         {!loading && (search || filterDesignation) && (
-          <p className="text-xs text-gray-400">
+          <p className="text-xs text-gray-600">
             {filtered.length} result{filtered.length !== 1 ? 's' : ''}
             {search && ` for "${search}"`}
             {filterDesignation && ` · ${filterDesignation.replace(/_/g, ' ')}`}
@@ -201,9 +201,7 @@ function EmployeeCard({ emp, isMe, onClick }) {
           <div className="flex justify-center mt-1">
             <DesignationBadge designation={emp.designation} />
           </div>
-          {emp.account && (
-            <p className="text-xs text-gray-400 mt-1 truncate max-w-[160px]">{emp.account}</p>
-          )}
+          <p className="text-xs text-gray-600 mt-1 truncate max-w-[160px]">{emp.department || '—'}</p>
         </div>
       </div>
     </button>
@@ -213,7 +211,7 @@ function EmployeeCard({ emp, isMe, onClick }) {
 // ── EmployeeModal ─────────────────────────────────────────────────────────────
 
 function EmployeeModal({ emp, graph, graphLoading, canViewGraph, currentUserId, onClose }) {
-  const colors    = DESIGNATION_COLORS[emp.designation] ?? { bg: '#64748B' }
+  const colors = DESIGNATION_COLORS[emp.designation] ?? { bg: '#64748B' }
   const overlayRef = useRef(null)
 
   // Escape key + body scroll lock
@@ -244,7 +242,7 @@ function EmployeeModal({ emp, graph, graphLoading, canViewGraph, currentUserId, 
           <h3 className="text-base font-semibold text-gray-900">Employee Profile</h3>
           <button
             onClick={onClose}
-            className="w-8 h-8 flex items-center justify-center rounded-lg text-gray-400 hover:text-gray-600 hover:bg-gray-100 transition-colors"
+            className="w-8 h-8 flex items-center justify-center rounded-lg text-gray-600 hover:text-gray-600 hover:bg-gray-100 transition-colors"
             aria-label="Close"
           >
             <IconXLg />
@@ -265,7 +263,6 @@ function EmployeeModal({ emp, graph, graphLoading, canViewGraph, currentUserId, 
               <h2 className="text-lg font-bold text-gray-900">{emp.name}</h2>
               <div className="flex items-center gap-1.5 mt-1 flex-wrap">
                 <DesignationBadge designation={emp.designation} />
-                {emp.grade && <GradeBadge grade={emp.grade} />}
               </div>
             </div>
           </div>
@@ -275,9 +272,8 @@ function EmployeeModal({ emp, graph, graphLoading, canViewGraph, currentUserId, 
             <DetailRow label="Email" value={emp.email} />
             {canViewGraph && (
               <>
-                {emp.account    && <DetailRow label="Account" value={emp.account} />}
-                {emp.project    && <DetailRow label="Project" value={emp.project} />}
-                {emp.joiningDate && <DetailRow label="Joined"  value={formatDate(emp.joiningDate)} />}
+                {emp.department && <DetailRow label="Department" value={emp.department} />}
+                {emp.joiningDate && <DetailRow label="Joined" value={formatDate(emp.joiningDate)} />}
               </>
             )}
           </div>
@@ -291,15 +287,16 @@ function EmployeeModal({ emp, graph, graphLoading, canViewGraph, currentUserId, 
                   graphData={graph}
                   loading={graphLoading}
                   currentUserId={currentUserId}
+                  currentUserDesignation={emp?.designation}
                 />
               </div>
             </div>
           ) : (
             <div className="flex items-center gap-3 p-4 bg-gray-50 rounded-xl">
-              <span className="text-gray-400 flex-shrink-0">
+              <span className="text-gray-600 flex-shrink-0">
                 <IconLock />
               </span>
-              <span className="text-sm text-gray-500">
+              <span className="text-sm text-gray-700">
                 Connection details are only visible to senior colleagues.
               </span>
             </div>
@@ -316,7 +313,7 @@ function DetailRow({ label, value }) {
   if (!value) return null
   return (
     <div className="flex items-center justify-between gap-4">
-      <span className="text-xs font-medium text-gray-400 flex-shrink-0">{label}</span>
+      <span className="text-xs font-medium text-gray-600 flex-shrink-0">{label}</span>
       <span className="text-xs text-gray-700 text-right">{value}</span>
     </div>
   )
@@ -346,11 +343,11 @@ function EmployeeSkeleton() {
 function EmptyState({ hasFilters }) {
   return (
     <div className="flex flex-col items-center gap-3 py-16 text-center">
-      <div className="w-14 h-14 rounded-full bg-gray-100 flex items-center justify-center text-gray-400">
+      <div className="w-14 h-14 rounded-full bg-gray-100 flex items-center justify-center text-gray-600">
         <IconSearch />
       </div>
       <p className="text-sm font-semibold text-gray-600">No employees found</p>
-      <p className="text-xs text-gray-400">
+      <p className="text-xs text-gray-600">
         {hasFilters ? 'Try adjusting your search or filter.' : 'No employees have been added yet.'}
       </p>
     </div>
@@ -371,8 +368,8 @@ function IconSearch() {
 function IconX() {
   return (
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" className="w-4 h-4">
-      <line x1="18" y1="6"  x2="6"  y2="18" />
-      <line x1="6"  y1="6"  x2="18" y2="18" />
+      <line x1="18" y1="6" x2="6" y2="18" />
+      <line x1="6" y1="6" x2="18" y2="18" />
     </svg>
   )
 }
@@ -380,8 +377,8 @@ function IconX() {
 function IconXLg() {
   return (
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" className="w-5 h-5">
-      <line x1="18" y1="6"  x2="6"  y2="18" />
-      <line x1="6"  y1="6"  x2="18" y2="18" />
+      <line x1="18" y1="6" x2="6" y2="18" />
+      <line x1="6" y1="6" x2="18" y2="18" />
     </svg>
   )
 }

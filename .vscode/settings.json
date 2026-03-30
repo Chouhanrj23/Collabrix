@@ -1,4 +1,7 @@
 {
     "java.compile.nullAnalysis.mode": "automatic",
-    "java.debug.settings.onBuildFailureProceed": true
+    "java.debug.settings.onBuildFailureProceed": true,
+    "java.configuration.updateBuildConfiguration": "interactive",
+    "snyk.advanced.organization": "bb3a46fd-f49b-49bb-9119-e5049be536c3",
+    "snyk.advanced.autoSelectOrganization": true
 }

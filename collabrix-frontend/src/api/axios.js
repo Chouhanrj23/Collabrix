@@ -1,7 +1,5 @@
 import axios from 'axios'
-
-const TOKEN_KEY = 'collabrix_token'
-const USER_KEY = 'collabrix_user'
+import { TOKEN_KEY, USER_KEY } from './storageKeys'
 
 const api = axios.create({
   baseURL: import.meta.env.VITE_API_BASE_URL,

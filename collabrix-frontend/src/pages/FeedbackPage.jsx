@@ -19,12 +19,12 @@ const INPUT_CLASS = [
 
 export default function FeedbackPage() {
   const { user } = useAuth()
-  const [activeTab,       setActiveTab]       = useState(0)
-  const [received,        setReceived]        = useState([])
-  const [given,           setGiven]           = useState([])
+  const [activeTab, setActiveTab] = useState(0)
+  const [received, setReceived] = useState([])
+  const [given, setGiven] = useState([])
   const [pendingRequests, setPendingRequests] = useState([])
-  const [loading,         setLoading]         = useState(true)
-  const [givenLoading,    setGivenLoading]    = useState(false)
+  const [loading, setLoading] = useState(true)
+  const [givenLoading, setGivenLoading] = useState(false)
   const givenFetchedRef = useRef(false)
 
   // Received + pending fetched at mount
@@ -34,7 +34,7 @@ export default function FeedbackPage() {
       feedbackService.getPendingRequests(),
     ])
       .then(([recv, pend]) => { setReceived(recv); setPendingRequests(pend) })
-      .catch(() => {})
+      .catch(() => { })
       .finally(() => setLoading(false))
   }, [])
 
@@ -45,7 +45,7 @@ export default function FeedbackPage() {
     setGivenLoading(true)
     feedbackService.getGiven()
       .then(setGiven)
-      .catch(() => {})
+      .catch(() => { })
       .finally(() => setGivenLoading(false))
   }, [activeTab])
 
@@ -53,11 +53,11 @@ export default function FeedbackPage() {
     setPendingRequests((prev) => prev.filter((r) => r.id !== id)), [])
 
   const TABS = [
-    { label: 'Received',         count: loading ? null : received.length },
-    { label: 'Given',            count: givenLoading ? null : (given.length > 0 ? given.length : null) },
-    { label: 'Give Feedback',    count: null },
+    { label: 'Received', count: loading ? null : received.length },
+    { label: 'Given', count: givenLoading ? null : (given.length > 0 ? given.length : null) },
+    { label: 'Give Feedback', count: null },
     { label: 'Request Feedback', count: null },
-    { label: 'Pending',          count: pendingRequests.length > 0 ? pendingRequests.length : null, highlight: true },
+    { label: 'Pending', count: pendingRequests.length > 0 ? pendingRequests.length : null, highlight: true },
   ]
 
   return (
@@ -67,7 +67,7 @@ export default function FeedbackPage() {
       <div className="px-6 pt-6 pb-0 bg-white border-b border-gray-200">
         <div className="mb-4">
           <h2 className="text-xl font-bold text-gray-900">Feedback</h2>
-          <p className="text-sm text-gray-400 mt-0.5">
+          <p className="text-base text-gray-600 leading-relaxed mt-0.5">
             Request, give, and review feedback with your colleagues
           </p>
         </div>
@@ -83,7 +83,7 @@ export default function FeedbackPage() {
                 'flex items-center gap-2 px-4 py-3 text-sm font-medium border-b-2 transition-colors -mb-px whitespace-nowrap',
                 activeTab === i
                   ? 'border-brand-sidebar text-brand-sidebar'
-                  : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300',
+                  : 'border-transparent text-gray-700 hover:text-gray-700 hover:border-gray-300',
               ].join(' ')}
             >
               {tab.label}
@@ -272,11 +272,11 @@ function GivenFeedbackRow({ fb }) {
 
 function GiveFeedbackTab({ user }) {
   const [selected, setSelected] = useState(null)
-  const [rating,   setRating]   = useState(0)
-  const [comment,  setComment]  = useState('')
-  const [loading,  setLoading]  = useState(false)
-  const [success,  setSuccess]  = useState('')
-  const [error,    setError]    = useState('')
+  const [rating, setRating] = useState(0)
+  const [comment, setComment] = useState('')
+  const [loading, setLoading] = useState(false)
+  const [success, setSuccess] = useState('')
+  const [error, setError] = useState('')
 
   const filterFn = useCallback(
     (emp) => canGiveFeedback(user?.designation, emp.designation),
@@ -295,7 +295,13 @@ function GiveFeedbackTab({ user }) {
       setRating(0)
       setComment('')
     } catch (err) {
-      setError(err.response?.data?.message ?? 'Failed to submit feedback.')
+      const msg = err.response?.data?.message ?? 'Failed to submit feedback.'
+      // Normalise backend hierarchy error to a friendlier phrase
+      setError(
+        msg.toLowerCase().includes('senior') || msg.toLowerCase().includes('hierarchy')
+          ? 'You cannot give feedback to a higher-level employee. Please select someone at the same level or below.'
+          : msg
+      )
     } finally {
       setLoading(false)
     }
@@ -303,14 +309,36 @@ function GiveFeedbackTab({ user }) {
 
   const isValid = !!selected && rating > 0 && comment.trim().length > 0
 
+  const designationLabel = selected
+    ? canGiveFeedback(user?.designation, selected.designation)
+      ? null
+      : 'selected-invalid'
+    : null
+
   return (
     <div className="max-w-xl space-y-4">
-      <p className="text-sm text-gray-500">
-        You can give feedback to colleagues at the same or lower designation level.
-      </p>
+
+      {/* Hierarchy info banner */}
+      <div className="flex items-start gap-3 bg-blue-50 border border-blue-100 rounded-xl px-4 py-3">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"
+          className="w-4 h-4 text-blue-500 flex-shrink-0 mt-0.5">
+          <circle cx="12" cy="12" r="10" />
+          <line x1="12" y1="8" x2="12" y2="12" />
+          <line x1="12" y1="16" x2="12.01" y2="16" />
+        </svg>
+        <div className="text-xs text-blue-700 leading-relaxed">
+          <span className="font-semibold">Hierarchy rule: </span>
+          You can only give feedback to employees at the <span className="font-semibold">same level or below</span> in the designation ladder.
+          {user?.designation && (
+            <span className="block mt-0.5 text-blue-500">
+              Your designation: <span className="font-semibold">{DESIGNATION_DISPLAY_LOCAL[user.designation] ?? user.designation.replace(/_/g, ' ')}</span>
+            </span>
+          )}
+        </div>
+      </div>
 
       {success && <SuccessBanner message={success} onDismiss={() => setSuccess('')} />}
-      {error   && <ErrorAlert   message={error}   onDismiss={() => setError('')}   />}
+      {error && <ErrorAlert message={error} onDismiss={() => setError('')} />}
 
       <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
         <form onSubmit={handleSubmit} noValidate className="divide-y divide-gray-100">
@@ -324,6 +352,7 @@ function GiveFeedbackTab({ user }) {
               onClear={() => setSelected(null)}
               filterFn={filterFn}
               placeholder="Search by name or email…"
+              hierarchyNote="Only employees at your level or below are shown"
             />
             {selected && <SelectedEmployeeCard employee={selected} />}
           </div>
@@ -338,7 +367,7 @@ function GiveFeedbackTab({ user }) {
           <div className="px-5 py-4">
             <div className="flex items-center justify-between mb-1.5">
               <FieldLabel text="Comment" required />
-              <span className="text-xs text-gray-400">{comment.length}/1000</span>
+              <span className="text-xs text-gray-600">{comment.length}/1000</span>
             </div>
             <textarea
               value={comment}
@@ -360,14 +389,23 @@ function GiveFeedbackTab({ user }) {
   )
 }
 
+const DESIGNATION_DISPLAY_LOCAL = {
+  DIRECTOR: 'Director',
+  PARTNER: 'Partner',
+  MANAGER: 'Manager',
+  SENIOR_CONSULTANT: 'Senior Consultant',
+  CONSULTANT: 'Consultant',
+  ASSOCIATE_CONSULTANT: 'Associate Consultant',
+}
+
 // ── Tab 2: Request Feedback ───────────────────────────────────────────────────
 
 function RequestFeedbackTab() {
   const [selected, setSelected] = useState(null)
-  const [message,  setMessage]  = useState('')
-  const [loading,  setLoading]  = useState(false)
-  const [success,  setSuccess]  = useState('')
-  const [error,    setError]    = useState('')
+  const [message, setMessage] = useState('')
+  const [loading, setLoading] = useState(false)
+  const [success, setSuccess] = useState('')
+  const [error, setError] = useState('')
 
   async function handleSubmit(e) {
     e.preventDefault()
@@ -391,12 +429,12 @@ function RequestFeedbackTab() {
 
   return (
     <div className="max-w-xl space-y-4">
-      <p className="text-sm text-gray-500">
+      <p className="text-base text-gray-700 leading-relaxed">
         You can request feedback from any colleague, regardless of hierarchy.
       </p>
 
       {success && <SuccessBanner message={success} onDismiss={() => setSuccess('')} />}
-      {error   && <ErrorAlert   message={error}   onDismiss={() => setError('')}   />}
+      {error && <ErrorAlert message={error} onDismiss={() => setError('')} />}
 
       <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
         <form onSubmit={handleSubmit} noValidate className="divide-y divide-gray-100">
@@ -417,7 +455,7 @@ function RequestFeedbackTab() {
           <div className="px-5 py-4">
             <div className="flex items-center justify-between mb-1.5">
               <FieldLabel text="Personal message" />
-              <span className="text-xs text-gray-400">{message.length}/500</span>
+              <span className="text-xs text-gray-600">{message.length}/500</span>
             </div>
             <textarea
               value={message}
@@ -443,7 +481,7 @@ function RequestFeedbackTab() {
 
 function PendingRequestsTab({ requests, loading, onFulfilled }) {
   const [successMsg, setSuccessMsg] = useState('')
-  const [errorMsg,   setErrorMsg]   = useState('')
+  const [errorMsg, setErrorMsg] = useState('')
 
   async function handleGive(req, rating, comment) {
     try {
@@ -465,7 +503,7 @@ function PendingRequestsTab({ requests, loading, onFulfilled }) {
   return (
     <div className="max-w-xl space-y-4">
       {successMsg && <SuccessBanner message={successMsg} onDismiss={() => setSuccessMsg('')} />}
-      {errorMsg   && <ErrorAlert   message={errorMsg}   onDismiss={() => setErrorMsg('')}   />}
+      {errorMsg && <ErrorAlert message={errorMsg} onDismiss={() => setErrorMsg('')} />}
 
       {requests.length === 0 ? (
         <EmptyState
@@ -475,7 +513,7 @@ function PendingRequestsTab({ requests, loading, onFulfilled }) {
         />
       ) : (
         <>
-          <p className="text-xs font-medium text-gray-500 uppercase tracking-wider">
+          <p className="text-xs font-medium text-gray-700 uppercase tracking-wider">
             {requests.length} request{requests.length !== 1 ? 's' : ''} awaiting your response
           </p>
           <div className="space-y-3">
@@ -491,11 +529,11 @@ function PendingRequestsTab({ requests, loading, onFulfilled }) {
 
 function PendingFeedbackCard({ request, onGive }) {
   const [expanded, setExpanded] = useState(false)
-  const [rating,   setRating]   = useState(0)
-  const [comment,  setComment]  = useState('')
-  const [loading,  setLoading]  = useState(false)
+  const [rating, setRating] = useState(0)
+  const [comment, setComment] = useState('')
+  const [loading, setLoading] = useState(false)
 
-  const from   = request.fromEmployee
+  const from = request.fromEmployee
   const colors = DESIGNATION_COLORS[from?.designation] ?? { bg: '#64748B' }
 
   async function handleSubmit() {
@@ -539,7 +577,7 @@ function PendingFeedbackCard({ request, onGive }) {
       {/* Requester's message */}
       {request.comment && (
         <div className="px-5 pb-3">
-          <p className="text-xs text-gray-500 italic bg-gray-50 rounded-lg px-3 py-2">
+          <p className="text-xs text-gray-700 italic bg-gray-50 rounded-lg px-3 py-2">
             "{request.comment}"
           </p>
         </div>
@@ -556,7 +594,7 @@ function PendingFeedbackCard({ request, onGive }) {
           <div>
             <div className="flex items-center justify-between mb-1.5">
               <FieldLabel text="Comment" required />
-              <span className="text-xs text-gray-400">{comment.length}/1000</span>
+              <span className="text-xs text-gray-600">{comment.length}/1000</span>
             </div>
             <textarea
               value={comment}
@@ -584,14 +622,15 @@ function PendingFeedbackCard({ request, onGive }) {
 // ── EmployeeSearch ─────────────────────────────────────────────────────────────
 // Self-contained: manages debounce, API call, and click-outside internally.
 
-function EmployeeSearch({ onSelect, selected, onClear, filterFn, placeholder = 'Search employee…' }) {
+function EmployeeSearch({ onSelect, selected, onClear, filterFn, placeholder = 'Search employee…', hierarchyNote }) {
   const { user } = useAuth()
-  const [query,       setQuery]       = useState('')
+  const [query, setQuery] = useState('')
   const [suggestions, setSuggestions] = useState([])
-  const [open,        setOpen]        = useState(false)
-  const [searching,   setSearching]   = useState(false)
-  const containerRef  = useRef(null)
-  const timerRef      = useRef(null)
+  const [open, setOpen] = useState(false)
+  const [searching, setSearching] = useState(false)
+  const [wasFiltered, setWasFiltered] = useState(false)   // ← new: were results hidden by hierarchy?
+  const containerRef = useRef(null)
+  const timerRef = useRef(null)
 
   // Close dropdown on outside click
   useEffect(() => {
@@ -614,11 +653,14 @@ function EmployeeSearch({ onSelect, selected, onClear, filterFn, placeholder = '
       try {
         let results = await employeeService.search(val)
         results = results.filter((e) => e.id !== user?.employeeId)
+        const beforeFilter = results.length
         if (filterFn) results = results.filter(filterFn)
+        setWasFiltered(beforeFilter > 0 && results.length === 0)
         setSuggestions(results)
         setOpen(true)
       } catch {
         setSuggestions([])
+        setWasFiltered(false)
       } finally {
         setSearching(false)
       }
@@ -630,6 +672,7 @@ function EmployeeSearch({ onSelect, selected, onClear, filterFn, placeholder = '
     setQuery(emp.name)
     setOpen(false)
     setSuggestions([])
+    setWasFiltered(false)
   }
 
   function handleClear() {
@@ -637,13 +680,24 @@ function EmployeeSearch({ onSelect, selected, onClear, filterFn, placeholder = '
     setQuery('')
     setSuggestions([])
     setOpen(false)
+    setWasFiltered(false)
   }
 
   return (
     <div ref={containerRef} className="relative mt-1.5">
+      {/* Hierarchy note */}
+      {hierarchyNote && (
+        <p className="text-[11px] text-gray-600 mb-1.5 flex items-center gap-1">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-3 h-3 flex-shrink-0">
+            <polyline points="18 15 12 9 6 15" />
+          </svg>
+          {hierarchyNote}
+        </p>
+      )}
+
       {/* Input */}
       <div className="relative">
-        <span className="absolute inset-y-0 left-3 flex items-center text-gray-400 pointer-events-none">
+        <span className="absolute inset-y-0 left-3 flex items-center text-gray-600 pointer-events-none">
           {searching ? <Spinner className="w-4 h-4" /> : <IconSearch className="w-4 h-4" />}
         </span>
         <input
@@ -659,7 +713,7 @@ function EmployeeSearch({ onSelect, selected, onClear, filterFn, placeholder = '
           <button
             type="button"
             onClick={handleClear}
-            className="absolute inset-y-0 right-3 flex items-center gap-1 text-xs font-medium text-gray-400 hover:text-gray-600"
+            className="absolute inset-y-0 right-3 flex items-center gap-1 text-xs font-medium text-gray-600 hover:text-gray-600"
           >
             <IconX className="w-3.5 h-3.5" /> Clear
           </button>
@@ -670,9 +724,24 @@ function EmployeeSearch({ onSelect, selected, onClear, filterFn, placeholder = '
       {open && (
         <div className="absolute z-20 left-0 right-0 mt-1 bg-white border border-gray-200 rounded-xl shadow-lg overflow-hidden max-h-52 overflow-y-auto">
           {suggestions.length === 0 ? (
-            <p className="px-4 py-3 text-sm text-gray-400">
-              No results for "{query}"
-            </p>
+            <div className="px-4 py-5 text-center">
+              {wasFiltered ? (
+                <>
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"
+                    className="w-8 h-8 text-amber-300 mx-auto mb-2">
+                    <path d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z" />
+                    <line x1="12" y1="9" x2="12" y2="13" />
+                    <line x1="12" y1="17" x2="12.01" y2="17" />
+                  </svg>
+                  <p className="text-sm font-medium text-gray-700">No eligible employees</p>
+                  <p className="text-xs text-gray-600 mt-0.5">
+                    The matched employee(s) have a higher designation and cannot receive feedback from you.
+                  </p>
+                </>
+              ) : (
+                <p className="text-sm text-gray-600">No results for "{query}"</p>
+              )}
+            </div>
           ) : (
             suggestions.map((emp) => {
               const colors = DESIGNATION_COLORS[emp.designation] ?? { bg: '#64748B' }
@@ -691,7 +760,7 @@ function EmployeeSearch({ onSelect, selected, onClear, filterFn, placeholder = '
                   </div>
                   <div className="min-w-0 flex-1">
                     <p className="text-sm font-medium text-gray-800 truncate">{emp.name}</p>
-                    <p className="text-xs text-gray-400 truncate">{emp.email}</p>
+                    <p className="text-xs text-gray-600 truncate">{emp.email}</p>
                   </div>
                   <div className="flex-shrink-0">
                     <DesignationBadge designation={emp.designation} />
@@ -762,7 +831,7 @@ function SelectedEmployeeCard({ employee }) {
         <p className="text-sm font-semibold text-gray-900 truncate">{employee.name}</p>
         <div className="flex items-center gap-2 mt-0.5">
           <DesignationBadge designation={employee.designation} />
-          <span className="text-xs text-gray-400 truncate">{employee.email}</span>
+          <span className="text-xs text-gray-600 truncate">{employee.email}</span>
         </div>
       </div>
       <IconCheckCircle className="w-5 h-5 text-emerald-500 flex-shrink-0" />
@@ -824,7 +893,7 @@ function ErrorAlert({ message, onDismiss }) {
 function StatMini({ label, value }) {
   return (
     <div className="bg-white border border-gray-100 rounded-xl px-4 py-3 shadow-sm">
-      <p className="text-xs font-medium text-gray-400">{label}</p>
+      <p className="text-xs font-medium text-gray-600">{label}</p>
       <p className="text-lg font-bold text-gray-900 mt-0.5">{value}</p>
     </div>
   )
@@ -850,11 +919,11 @@ function FeedbackSkeleton() {
 function EmptyState({ icon, title, subtitle }) {
   return (
     <div className="flex flex-col items-center gap-3 py-16 text-center">
-      <div className="w-14 h-14 rounded-full bg-gray-100 flex items-center justify-center text-gray-400">
+      <div className="w-14 h-14 rounded-full bg-gray-100 flex items-center justify-center text-gray-600">
         <span className="w-7 h-7">{icon}</span>
       </div>
       <p className="text-sm font-semibold text-gray-600">{title}</p>
-      {subtitle && <p className="text-xs text-gray-400 max-w-xs">{subtitle}</p>}
+      {subtitle && <p className="text-xs text-gray-600 max-w-xs">{subtitle}</p>}
     </div>
   )
 }
