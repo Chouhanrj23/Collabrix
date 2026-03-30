@@ -34,8 +34,8 @@ public class FeedbackSeeder implements CommandLineRunner {
     public void run(String... args) {
         long existing = feedbackRepository.count();
         if (existing > 0) {
-            log.info("FeedbackSeeder: wiping {} existing entries and reseeding…", existing);
-            feedbackRepository.deleteAll();
+            log.info("FeedbackSeeder: feedback already seeded ({} entries) — skipping", existing);
+            return;
         }
 
         List<Employee> employees = employeeRepository.findAll();
