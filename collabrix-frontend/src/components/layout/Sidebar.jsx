@@ -1,15 +1,17 @@
 import { NavLink } from 'react-router-dom'
 import { useAuth } from '../../context/AuthContext'
 import { getInitials } from '../../utils/formatters'
+import { isManagerOrAbove } from '../../utils/designationUtils'
 
 // ── Nav item definitions ─────────────────────────────────────────────────────
 
 const NAV_ITEMS = [
-  { to: '/dashboard',      label: 'Dashboard',      icon: IconDashboard,  end: true },
-  { to: '/connections',    label: 'My Connections',  icon: IconConnections       },
-  { to: '/add-connection', label: 'Add Connection',  icon: IconAddConnection     },
-  { to: '/employees',      label: 'Employees',       icon: IconEmployees         },
-  { to: '/feedback',       label: 'Feedback',        icon: IconFeedback          },
+  { to: '/dashboard',      label: 'Dashboard',      icon: IconDashboard,    end: true },
+  { to: '/connections',    label: 'My Connections',  icon: IconConnections         },
+  { to: '/add-connection', label: 'Add Connection',  icon: IconAddConnection       },
+  { to: '/employees',      label: 'Employees',       icon: IconEmployees           },
+  { to: '/feedback',       label: 'Feedback',        icon: IconFeedback            },
+  { to: '/projects',       label: 'Projects',        icon: IconProjects, managerOnly: true },
 ]
 
 // ── Component ────────────────────────────────────────────────────────────────
@@ -21,6 +23,11 @@ const NAV_ITEMS = [
  */
 export default function Sidebar({ open, onToggle }) {
   const { user, logout } = useAuth()
+
+  // Filter items: managerOnly items are hidden for non-managers
+  const visibleNavItems = NAV_ITEMS.filter(
+    (item) => !item.managerOnly || isManagerOrAbove(user?.designation)
+  )
 
   return (
     <aside
@@ -61,7 +68,7 @@ export default function Sidebar({ open, onToggle }) {
       {/* ── Navigation ── */}
       <nav className="flex-1 overflow-y-auto overflow-x-hidden py-4 px-2" aria-label="Main navigation">
         <div className="space-y-0.5">
-          {NAV_ITEMS.map(({ to, label, icon: Icon, end }) => (
+          {visibleNavItems.map(({ to, label, icon: Icon, end }) => (
             <NavLink
               key={to}
               to={to}
@@ -185,6 +192,17 @@ function IconFeedback() {
   return (
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-5 h-5">
       <path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z" />
+    </svg>
+  )
+}
+
+function IconProjects() {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-5 h-5">
+      <path d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2" />
+      <rect x="9" y="3" width="6" height="4" rx="1" />
+      <line x1="9" y1="12" x2="15" y2="12" />
+      <line x1="9" y1="16" x2="13" y2="16" />
     </svg>
   )
 }

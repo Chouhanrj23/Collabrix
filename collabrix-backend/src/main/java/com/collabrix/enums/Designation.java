@@ -7,17 +7,18 @@ import lombok.RequiredArgsConstructor;
 @RequiredArgsConstructor
 public enum Designation {
 
-    DIRECTOR("Director", 6),
-    PARTNER("Partner", 5),
-    MANAGER("Manager", 4),
-    SENIOR_CONSULTANT("Senior Consultant", 3),
-    CONSULTANT("Consultant", 2),
-    ASSOCIATE_CONSULTANT("Associate Consultant", 1);
+    PARTNER("Partner", 1),
+    DIRECTOR("Director", 2),
+    MANAGER("Manager", 3),
+    SENIOR_CONSULTANT("Senior Consultant", 4),
+    CONSULTANT("Consultant", 5),
+    ASSOCIATE("Associate", 6);
 
     private final String displayName;
     private final int hierarchyLevel;
 
     public static boolean isSeniorTo(Designation a, Designation b) {
-        return a.hierarchyLevel > b.hierarchyLevel;
+        return a.hierarchyLevel < b.hierarchyLevel;
     }
 }
+

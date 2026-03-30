@@ -38,3 +38,26 @@ export function truncate(str, max = 80) {
 export function ratingStars(rating) {
   return '★'.repeat(rating) + '☆'.repeat(5 - rating)
 }
+
+export function getDuration(startDate, endDate) {
+  if (!startDate) return "—";
+
+  const start = new Date(startDate);
+  const end = endDate ? new Date(endDate) : new Date();
+
+  if (isNaN(start) || isNaN(end)) return "—";
+
+  let years = end.getFullYear() - start.getFullYear();
+  let months = end.getMonth() - start.getMonth();
+
+  if (months < 0) {
+    years--;
+    months += 12;
+  }
+
+  let result = "";
+  if (years > 0) result += `${years} yr `;
+  if (months > 0) result += `${months} mo`;
+
+  return result.trim() || "Less than a month";
+}

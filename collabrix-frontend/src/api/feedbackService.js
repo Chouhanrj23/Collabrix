@@ -42,6 +42,9 @@ export const feedbackService = {
   getReceivedForEmployee: (employeeId) =>
     api.get(`/feedback/received/${employeeId}`).then((r) => r.data),
 
+  getForEmployee: (employeeId) =>
+    api.get(`/feedback/employee/${employeeId}`).then((r) => r.data),
+
   getPendingRequests: () =>
     api.get('/feedback/pending-requests').then((r) => r.data),
 }

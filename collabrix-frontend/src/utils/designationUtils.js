@@ -5,6 +5,7 @@ export const DESIGNATION_LEVELS = {
   SENIOR_CONSULTANT: 3,
   CONSULTANT: 2,
   ASSOCIATE_CONSULTANT: 1,
+  ASSOCIATE: 1,
 }
 
 export const DESIGNATION_DISPLAY = {
@@ -14,6 +15,7 @@ export const DESIGNATION_DISPLAY = {
   SENIOR_CONSULTANT: 'Senior Consultant',
   CONSULTANT: 'Consultant',
   ASSOCIATE_CONSULTANT: 'Associate Consultant',
+  ASSOCIATE: 'Associate',
 }
 
 export const DESIGNATION_COLORS = {
@@ -23,6 +25,7 @@ export const DESIGNATION_COLORS = {
   SENIOR_CONSULTANT: { bg: '#16A085', border: '#0E7368', text: '#fff' },
   CONSULTANT: { bg: '#27AE60', border: '#1E8449', text: '#fff' },
   ASSOCIATE_CONSULTANT: { bg: '#E74C3C', border: '#C0392B', text: '#fff' },
+  ASSOCIATE: { bg: '#E74C3C', border: '#C0392B', text: '#fff' },
 }
 
 export const DESIGNATION_BADGE_COLORS = {
@@ -32,6 +35,7 @@ export const DESIGNATION_BADGE_COLORS = {
   SENIOR_CONSULTANT: '#16A085',
   CONSULTANT: '#27AE60',
   ASSOCIATE_CONSULTANT: '#E74C3C',
+  ASSOCIATE: '#E74C3C',
 }
 
 export const RELATIONSHIP_TYPE_DISPLAY = {

@@ -53,8 +53,7 @@ class FeedbackServiceTest {
                 .passwordHash("hash")
                 .designation(designation)
                 .grade(Grade.fromDesignation(designation))
-                .account("TestAccount")
-                .project("TestProject")
+                .department("Software Engineering")
                 .joiningDate(LocalDate.of(2020, 1, 1))
                 .active(true)
                 .build();

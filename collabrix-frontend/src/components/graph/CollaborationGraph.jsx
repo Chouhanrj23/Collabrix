@@ -4,6 +4,7 @@ import { DataSet } from 'vis-data'
 import { DESIGNATION_COLORS, RELATIONSHIP_TYPE_DISPLAY } from '../../utils/designationUtils'
 import LoadingSpinner from '../common/LoadingSpinner'
 import NodeDetailModal from './NodeDetailModal'
+import EdgeDetailModal from './EdgeDetailModal.jsx'
 
 // ── Edge colors per relationship type ─────────────────────────────────────────
 const RELATIONSHIP_EDGE_COLORS = {
@@ -16,14 +17,15 @@ const RELATIONSHIP_EDGE_COLORS = {
   OTHERS: '#94A3B8',
 }
 
-// ── Map designation → hierarchy level (1 = top of org chart) ──────────────────
-const HIERARCHY_LEVEL = {
-  PARTNER: 1,
-  DIRECTOR: 2,
-  MANAGER: 3,
-  SENIOR_CONSULTANT: 4,
-  CONSULTANT: 5,
-  ASSOCIATE_CONSULTANT: 6,
+// ── HTML escape helper (prevents XSS in vis-network tooltips) ────────────────
+function escapeHtml(str) {
+  if (!str) return ''
+  return String(str)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#039;')
 }
 
 // ── Readable relationship label ──────────────────────────────────────────────
@@ -43,23 +45,92 @@ function designationLabel(d) {
     .replace('Associate Consultant', 'Assoc. Consultant')
 }
 
-// ── vis-network configuration — hierarchical org-chart layout ─────────────────
+// ── Role hierarchy levels (lower number = more senior) ───────────────────────
+const HIERARCHY = {
+  PARTNER: 1, DIRECTOR: 2, MANAGER: 3,
+  SENIOR_CONSULTANT: 4, CONSULTANT: 5,
+  ASSOCIATE: 6, ASSOCIATE_CONSULTANT: 6,
+}
+
+// ── Radial (circular) layout: center → direct ring → indirect ring ────────────
+//
+// vis-network canvas uses (0,0) as its logical origin; network.fit() then
+// pans/zooms so every node is visible regardless of the pixel size.
+//
+function computeRadialPositions(filteredGraphData, currentUserId) {
+  const RADIUS_DIRECT   = 150   // px from center to direct-connection ring
+  const RADIUS_INDIRECT = 300   // px from center to indirect-connection ring
+
+  const selfId = String(currentUserId)
+  const { directIds, indirectIds } = filteredGraphData
+  const pos = {}
+
+  // Center node
+  pos[selfId] = { x: 0, y: 0 }
+
+  // ── Direct ring — evenly spaced, starting at top (−π/2) ──────────────────
+  const directList = [...directIds]
+  directList.forEach((id, i) => {
+    const angle = (2 * Math.PI * i) / directList.length - Math.PI / 2
+    pos[id] = {
+      x: RADIUS_DIRECT * Math.cos(angle),
+      y: RADIUS_DIRECT * Math.sin(angle),
+    }
+  })
+
+  if (indirectIds.size === 0) return pos
+
+  // ── Map each indirect node → its parent direct node ───────────────────────
+  const parentOf = {}
+  filteredGraphData.edges.forEach(edge => {
+    const from = String(edge.from)
+    const to   = String(edge.to)
+    if (directIds.has(from) && indirectIds.has(to))   parentOf[to]   = from
+    if (directIds.has(to)   && indirectIds.has(from)) parentOf[from] = to
+  })
+
+  // ── Group indirect nodes by their parent ──────────────────────────────────
+  const groups = {}   // parentId → [childId, ...]
+  indirectIds.forEach(id => {
+    const parent = parentOf[id] ?? '__orphan__'
+    if (!groups[parent]) groups[parent] = []
+    groups[parent].push(id)
+  })
+
+  // Angular budget per parent sector (75 % of the sector to avoid overlap)
+  const sectorAngle = directList.length > 0
+    ? (2 * Math.PI) / directList.length * 0.75
+    : Math.PI / 2
+
+  Object.entries(groups).forEach(([parentId, children]) => {
+    const parentPos = pos[parentId]
+    const baseAngle = parentPos ? Math.atan2(parentPos.y, parentPos.x) : 0
+    const spread    = children.length > 1
+      ? Math.min(sectorAngle, (children.length - 1) * 0.35)
+      : 0
+
+    children.forEach((id, i) => {
+      const offset = children.length > 1
+        ? -spread / 2 + i * (spread / (children.length - 1))
+        : 0
+      const angle = baseAngle + offset
+      pos[id] = {
+        x: RADIUS_INDIRECT * Math.cos(angle),
+        y: RADIUS_INDIRECT * Math.sin(angle),
+      }
+    })
+  })
+
+  return pos
+}
+
+// ── vis-network configuration — radial layout, physics off ───────────────────
 const GRAPH_OPTIONS = {
   autoResize: true,
   height: '100%',
   width: '100%',
   layout: {
-    hierarchical: {
-      enabled: true,
-      direction: 'UD',
-      sortMethod: 'directed',
-      nodeSpacing: 160,
-      levelSeparation: 180,
-      treeSpacing: 220,
-      blockShifting: true,
-      edgeMinimization: true,
-      parentCentralization: true,
-    },
+    improvedLayout: false,   // pre-computed positions supplied; no auto-layout
   },
   nodes: {
     shape: 'circle',
@@ -94,7 +165,7 @@ const GRAPH_OPTIONS = {
     },
     width: 1.5,
     selectionWidth: 2.5,
-    smooth: { type: 'cubicBezier', forceDirection: 'vertical', roundness: 0.5 },
+    smooth: { type: 'continuous', roundness: 0.5 },
     chosen: {
       edge: (values) => {
         values.width = 3
@@ -104,14 +175,14 @@ const GRAPH_OPTIONS = {
     hoverWidth: 0.5,
   },
   physics: {
-    enabled: false,
+    enabled: false,  // positions are pre-computed via computeRadialPositions
   },
   interaction: {
     hover: true,
     tooltipDelay: 200,
     zoomView: false,
     dragView: true,
-    dragNodes: true,
+    dragNodes: false,
     multiselect: false,
     navigationButtons: false,
     keyboard: { enabled: false, bindToWindow: false },
@@ -155,7 +226,7 @@ function generateAvatarDataUrl(name, bgColor) {
  * @param {boolean} loading       - whether parent is still fetching
  * @param {number}  currentUserId - ID of the central/current employee
  */
-export default function CollaborationGraph({ graphData, loading, currentUserId }) {
+export default function CollaborationGraph({ graphData, loading, currentUserId, currentUserDesignation, isDirectOnly = false }) {
   // ── DOM / network refs ───────────────────────────────────────────────────
   const wrapperRef = useRef(null)
   const containerRef = useRef(null)
@@ -166,10 +237,14 @@ export default function CollaborationGraph({ graphData, loading, currentUserId }
   const flashTimerRef = useRef(null)
   const searchRef = useRef(null)
 
-  // ── Modal state ─────────────────────────────────────────────────────────
+  // ── Node modal state ───────────────────────────────────────────────────
   const [selectedNode, setSelectedNode] = useState(null)
   const [selectedEdges, setSelectedEdges] = useState([])
   const [modalOpen, setModalOpen] = useState(false)
+
+  // ── Edge modal state ──────────────────────────────────────────────────
+  const [selectedEdge, setSelectedEdge] = useState(null)
+  const [edgeModalOpen, setEdgeModalOpen] = useState(false)
 
   // ── Toolbar state ──────────────────────────────────────────────────────
   const [showRelLegend, setShowRelLegend] = useState(false)
@@ -203,13 +278,127 @@ export default function CollaborationGraph({ graphData, loading, currentUserId }
     return () => document.removeEventListener('mousedown', handler)
   }, [searchOpen])
 
+  // ── Visibility filter — BFS-based hierarchy expansion ────────────────────
+  const filteredGraphData = useMemo(() => {
+    if (!graphData?.nodes || !graphData?.edges || currentUserId == null) {
+      return { nodes: [], edges: [], directIds: new Set(), indirectIds: new Set(), nodeMap: {} }
+    }
+
+    const nodeMap = {}
+    graphData.nodes.forEach(n => { nodeMap[n.id] = n })
+
+    const selfId = String(currentUserId)
+    const currentLevel = HIERARCHY[currentUserDesignation] ?? 99
+
+    // 1. Identify direct connections (always visible — no hierarchy filter on direct)
+    const directIds = new Set()
+    graphData.edges.forEach((e) => {
+      if (e.from == null || e.to == null) return
+      const from = String(e.from)
+      const to = String(e.to)
+      if (from === selfId) directIds.add(to)
+      if (to === selfId) directIds.add(from)
+    })
+
+    // 2. isDirectOnly mode: self + direct connections only
+    if (isDirectOnly) {
+      const visibleIds = new Set([selfId, ...directIds])
+      return {
+        nodes: graphData.nodes.filter(n => visibleIds.has(String(n.id))),
+        edges: graphData.edges.filter(e =>
+          String(e.from) === selfId || String(e.to) === selfId
+        ),
+        directIds,
+        indirectIds: new Set(),
+        nodeMap,
+      }
+    }
+
+    // 3. BFS — seed queue with junior/equal directs only; senior directs are visible but not expanded.
+    //    Each hop after that adds a neighbor only when nodeLevel >= currentLevel,
+    //    which prevents any upward (more-senior) indirect traversal.
+    const allowedIds = new Set([selfId, ...directIds])
+    const seniorDirectIds = new Set()
+    const visited = new Set([selfId, ...directIds])
+    const queue = []
+
+    directIds.forEach(id => {
+      const node = nodeMap[id]
+      const nodeLevel = HIERARCHY[node?.designation] ?? 99
+      if (nodeLevel >= currentLevel) {
+        queue.push(id)        // junior/equal — expand further
+      } else {
+        seniorDirectIds.add(id) // senior — visible as node, connections hidden
+      }
+    })
+
+    while (queue.length > 0) {
+      const nodeId = queue.shift()
+
+      graphData.edges.forEach((e) => {
+        if (e.from == null || e.to == null) return
+        const from = String(e.from)
+        const to = String(e.to)
+        const neighbor = from === nodeId ? to : (to === nodeId ? from : null)
+        if (!neighbor || visited.has(neighbor)) return
+
+        visited.add(neighbor)
+        const node = nodeMap[neighbor]
+        if (!node) return
+
+        const nodeLevel = HIERARCHY[node.designation] ?? 99
+        if (nodeLevel >= currentLevel) {
+          allowedIds.add(neighbor)
+          queue.push(neighbor)
+        }
+      })
+    }
+
+    // 4. Filter edges — both endpoints must be in allowed set,
+    //    and senior direct connections' edges are hidden (except the direct edge to self)
+    const filteredEdges = graphData.edges.filter(e => {
+      const from = String(e.from), to = String(e.to)
+      if (!allowedIds.has(from) || !allowedIds.has(to)) return false
+      if (seniorDirectIds.has(from) && to !== selfId) return false
+      if (seniorDirectIds.has(to) && from !== selfId) return false
+      return true
+    })
+
+    // 5. Second-layer designation guard — drop any non-direct edge whose
+    //    source node (edge.from) is more senior than the current user.
+    //    Direct edges (one endpoint is self) are always preserved.
+    const finalEdges = filteredEdges.filter(e => {
+      const from = String(e.from), to = String(e.to)
+      if (from === selfId || to === selfId) return true
+      const sourceLevel = HIERARCHY[nodeMap[e.from]?.designation] ?? 99
+      return sourceLevel >= currentLevel
+    })
+
+    // 6. Separate indirect IDs for visual styling (dimmed nodes)
+    const indirectIds = new Set()
+    allowedIds.forEach(id => {
+      if (id !== selfId && !directIds.has(id)) indirectIds.add(id)
+    })
+
+    return {
+      nodes: graphData.nodes.filter(n => allowedIds.has(String(n.id))),
+      edges: finalEdges,
+      directIds,
+      indirectIds,
+      nodeMap,
+    }
+
+  }, [graphData, currentUserId, currentUserDesignation, isDirectOnly])
+
+
   // ── Memoized node transformations (with hierarchy level) ───────────────
   const visNodeItems = useMemo(() => {
-    if (!graphData?.nodes?.length) return []
-    return graphData.nodes.map((n) => {
+    if (!filteredGraphData.nodes.length) return []
+    return filteredGraphData.nodes.map((n) => {
       const colors = DESIGNATION_COLORS[n.designation] ?? { bg: '#64748B', border: '#475569' }
-      const isCenter = n.id === currentUserId
-      const level = HIERARCHY_LEVEL[n.designation] ?? 6
+      const isCenter = String(n.id) === String(currentUserId)
+      const isDirect = filteredGraphData.directIds.has(String(n.id))
+      const isIndirect = filteredGraphData.indirectIds.has(String(n.id))
       const hasImage = !!n.profileImageUrl
 
       const fullName = n.label ?? n.name
@@ -217,30 +406,39 @@ export default function CollaborationGraph({ graphData, loading, currentUserId }
 
       const desigLabel = designationLabel(n.designation)
 
+      // Indirect connections get slight transparency for visual hierarchy
+      const bgHex = colors.bg
+      const borderHex = colors.border
+      const opacitySuffix = isIndirect ? 'B3' : '' // ~70% opacity for indirect
+
+      const bgColor = isIndirect ? bgHex + opacitySuffix : bgHex
+      const borderColor = isCenter ? '#FFFFFF' : (isIndirect ? borderHex + opacitySuffix : borderHex)
+
       const nodeBase = {
         id: n.id,
         label: initials,
-        level,
+        shape: isCenter ? 'star' : 'circle',
         title: `<div style="font:13px Inter,sans-serif;padding:6px 10px;line-height:1.5;max-width:220px">
-                  <strong>${fullName}</strong><br/>
-                  <span style="color:#64748B">${n.designation?.replace(/_/g, ' ') ?? ''}</span>
-                  ${n.account ? `<br/><span style="color:#94A3B8;font-size:11px">${n.account}</span>` : ''}
+                  <strong>${escapeHtml(fullName)}${isCenter ? ' (You)' : ''}</strong><br/>
+                  <span style="color:#64748B">${escapeHtml(n.designation?.replace(/_/g, ' ') ?? '')}</span>
+                  ${n.department ? `<br/><span style="color:#94A3B8;font-size:11px">${escapeHtml(n.department)}</span>` : ''}
+                  ${isIndirect ? `<br/><span style="color:#F59E0B;font-size:11px;font-weight:600;margin-top:4px;display:block">Indirect Connection</span>` : ''}
                 </div>`,
         color: {
-          background: colors.bg,
-          border: isCenter ? '#FFFFFF' : colors.border,
-          highlight: { background: colors.bg, border: '#FFFFFF' },
-          hover: { background: colors.bg, border: '#E2E8F0' },
+          background: bgColor,
+          border: borderColor,
+          highlight: { background: bgHex, border: '#FFFFFF' },
+          hover: { background: bgHex, border: '#E2E8F0' },
         },
-        size: isCenter ? 35 : 30,
-        borderWidth: isCenter ? 4.5 : 2.5,
-        borderWidthSelected: 4.5,
+        size: isCenter ? 35 : (isDirect ? 28 : 24),
+        borderWidth: isCenter ? 3 : 2,
+        borderWidthSelected: 4,
         shadow: isCenter
-          ? { enabled: true, color: 'rgba(37,99,235,0.25)', size: 20, x: 0, y: 0 }
+          ? { enabled: true, color: 'rgba(37,99,235,0.35)', size: 22, x: 0, y: 0 }
           : { enabled: true, color: 'rgba(0,0,0,0.08)', size: 10, x: 0, y: 4 },
         font: {
           color: '#FFFFFF',
-          size: 15,
+          size: isCenter ? 13 : (isDirect ? 15 : 12),
           face: 'Inter, system-ui, sans-serif',
           bold: true,
           strokeWidth: 0,
@@ -252,36 +450,98 @@ export default function CollaborationGraph({ graphData, loading, currentUserId }
         _desigLabel: desigLabel,
       }
 
-      if (hasImage) {
+      if (!isCenter && hasImage) {
         nodeBase.shape = 'circularImage'
         nodeBase.image = n.profileImageUrl
-        nodeBase.brokenImage = generateAvatarDataUrl(n.label ?? n.name, colors.bg)
+        nodeBase.brokenImage = generateAvatarDataUrl(n.label ?? n.name, bgHex)
       }
 
       return nodeBase
     })
-  }, [graphData, currentUserId])
+  }, [filteredGraphData, currentUserId])
 
   // ── Memoized edge transformations (labels hidden, hover shows tooltip) ─
   const visEdgeItems = useMemo(() => {
-    if (!graphData?.edges?.length) return []
-    return graphData.edges.map((e, i) => {
-      const edgeColor = RELATIONSHIP_EDGE_COLORS[e.relationshipType] ?? '#CBD5E1'
+    if (!filteredGraphData.edges.length) return []
+
+    const hierarchy = {
+      PARTNER: 1,
+      DIRECTOR: 2,
+      MANAGER: 3,
+      SENIOR_CONSULTANT: 4,
+      CONSULTANT: 5,
+      ASSOCIATE: 6,
+      ASSOCIATE_CONSULTANT: 6
+    }
+
+    return filteredGraphData.edges.map((edge, i) => {
+      const edgeColor = RELATIONSHIP_EDGE_COLORS[edge.relationshipType] ?? '#CBD5E1'
+
+      const isDirectEdge = edge.from === currentUserId || edge.to === currentUserId
+      const opacity = isDirectEdge ? 'C0' : '60' // 75% for direct, 38% for indirect
+
+      const sourceNode = filteredGraphData.nodeMap[edge.from]
+      const targetNode = filteredGraphData.nodeMap[edge.to]
+
+      let from = edge.from
+      let to = edge.to
+
+      // Apply ONLY for reporting relationships
+      if (sourceNode && targetNode && edge.relationshipType.includes('REPORTING')) {
+        const sourceLevel = hierarchy[sourceNode.designation] || 99
+        const targetLevel = hierarchy[targetNode.designation] || 99
+
+        if (sourceLevel > targetLevel) {
+          // source is junior → correct
+          from = edge.from
+          to = edge.to
+        } else {
+          // reverse
+          from = edge.to
+          to = edge.from
+        }
+
+      }
+
+      let edgeArrows = undefined
+      if (sourceNode && targetNode) {
+        const sourceLvl = hierarchy[sourceNode.designation] || 99
+        const targetLvl = hierarchy[targetNode.designation] || 99
+        
+        // If peers, no arrows. Else if reporting, show arrow.
+        if (sourceLvl === targetLvl) {
+          edgeArrows = { to: { enabled: false } }
+        } else if (edge.relationshipType.includes('REPORTING')) {
+          edgeArrows = { to: { enabled: true } }
+        }
+      } else if (edge.relationshipType.includes('REPORTING')) {
+        edgeArrows = { to: { enabled: true } }
+      }
+
       return {
-        id: e.id ?? i,
-        from: e.from,
-        to: e.to,
-        label: formatRelationship(e.relationshipType),
-        title: RELATIONSHIP_TYPE_DISPLAY[e.relationshipType] ?? e.label ?? '',
+        id: edge.id ?? i,
+        from,
+        to,
+        label: formatRelationship(edge.relationshipType),
+        title: RELATIONSHIP_TYPE_DISPLAY[edge.relationshipType] ?? edge.label ?? '',
         color: {
-          color: edgeColor + 'A0',    // ~63% opacity for cleaner look
+          color: edgeColor + opacity,
           highlight: '#2563EB',
           hover: edgeColor,
         },
-        width: 1.5,
+        width: isDirectEdge ? 2 : 1,
+        arrows: edgeArrows,
+        dashes: edge.relationshipType === 'PEER',
+        relationshipType: edge.relationshipType,
+        department: edge.department,
+        account: edge.account,
+        project: edge.project,
+        startDate: edge.startDate,
+        endDate: edge.endDate,
+        _raw: edge,
       }
     })
-  }, [graphData])
+  }, [filteredGraphData, currentUserId])
 
   // ── Search results ─────────────────────────────────────────────────────
   const searchResults = useMemo(() => {
@@ -331,7 +591,17 @@ export default function CollaborationGraph({ graphData, loading, currentUserId }
     setSearchOpen(false)
     clearTimeout(flashTimerRef.current)
 
-    const nodes = new DataSet(visNodeItems)
+    // Assign radial positions: center node → direct ring → indirect ring
+    const posMap = currentUserId != null
+      ? computeRadialPositions(filteredGraphData, currentUserId)
+      : {}
+
+    const positionedNodes = visNodeItems.map(n => {
+      const p = posMap[String(n.id)]
+      return p ? { ...n, x: p.x, y: p.y, fixed: { x: true, y: true } } : n
+    })
+
+    const nodes = new DataSet(positionedNodes)
     const edges = new DataSet(visEdgeItems)
     nodesDataSetRef.current = nodes
     edgesDataSetRef.current = edges
@@ -347,11 +617,9 @@ export default function CollaborationGraph({ graphData, loading, currentUserId }
     const handleResize = () => network.redraw()
     window.addEventListener('resize', handleResize)
 
-    // Hierarchical layout positions nodes immediately — fit after first draw
+    // Fit once after the first draw — physics is off so there is no stabilization event
     network.once('afterDrawing', () => {
-      network.fit({
-        animation: { duration: 500, easingFunction: 'easeInOutQuad' },
-      })
+      network.fit({ animation: { duration: 400, easingFunction: 'easeInOutQuad' } })
     })
 
     // Paint name + designation below each node on every frame
@@ -396,21 +664,49 @@ export default function CollaborationGraph({ graphData, loading, currentUserId }
     })
 
     network.on('click', (params) => {
-      if (params.nodes.length === 0) return
+      // ── Node click ──
+      if (params.nodes.length > 0) {
+        const nodeId = params.nodes[0]
+        const nodeData = nodes.get(nodeId)
+        if (!nodeData) return
 
-      const nodeId = params.nodes[0]
-      const nodeData = nodes.get(nodeId)
-      if (!nodeData) return
+        applyFocusMode(nodeId)
 
-      applyFocusMode(nodeId)
+        const connectedEdges = rawEdgesRef.current.filter(
+          // eslint-disable-next-line eqeqeq — IDs may be string or number
+          (e) => e.from == nodeId || e.to == nodeId
+        )
+        setSelectedNode(nodeData._raw)
+        setSelectedEdges(connectedEdges)
+        setModalOpen(true)
+        return
+      }
 
-      const connectedEdges = rawEdgesRef.current.filter(
-        // eslint-disable-next-line eqeqeq — IDs may be string or number
-        (e) => e.from == nodeId || e.to == nodeId
-      )
-      setSelectedNode(nodeData._raw)
-      setSelectedEdges(connectedEdges)
-      setModalOpen(true)
+      // ── Edge click ──
+      if (params.edges.length > 0 && params.nodes.length === 0) {
+        const edgeId = params.edges[0]
+        const edge = rawEdgesRef.current.find((e) => String(e.id) === String(edgeId)) || edges.get(edgeId)
+
+        if (!edge) return
+
+        const fromNode = nodes.get(edge.from)
+        const toNode = nodes.get(edge.to)
+
+        setSelectedEdge({
+          ...edge,
+          relationshipType: edge.relationshipType || null,
+          department: edge.department || null,
+          account: edge.account || null,
+          project: edge.project || null,
+          startDate: edge.startDate || null,
+          endDate: edge.endDate || null,
+          fromName: fromNode?._fullName ?? 'Unknown',
+          fromDesignation: fromNode?._raw?.designation,
+          toName: toNode?._fullName ?? 'Unknown',
+          toDesignation: toNode?._raw?.designation,
+        })
+        setEdgeModalOpen(true)
+      }
     })
 
     return () => {
@@ -418,7 +714,7 @@ export default function CollaborationGraph({ graphData, loading, currentUserId }
       network.off('afterDrawing')
       window.removeEventListener('resize', handleResize)
     }
-  }, [visNodeItems, visEdgeItems, loading])
+  }, [visNodeItems, visEdgeItems, filteredGraphData, currentUserId, loading])
 
   // ── Destroy on unmount ─────────────────────────────────────────────────
   useEffect(() => {
@@ -481,6 +777,11 @@ export default function CollaborationGraph({ graphData, loading, currentUserId }
     setModalOpen(false)
     setSelectedNode(null)
     setSelectedEdges([])
+  }, [])
+
+  const closeEdgeModal = useCallback(() => {
+    setEdgeModalOpen(false)
+    setSelectedEdge(null)
   }, [])
 
   // ── Loading state ──────────────────────────────────────────────────────
@@ -659,7 +960,15 @@ export default function CollaborationGraph({ graphData, loading, currentUserId }
         node={selectedNode}
         edges={selectedEdges}
         currentUserId={currentUserId}
+        currentUserDesignation={currentUserDesignation}
         onClose={closeModal}
+      />
+
+      {/* ── Edge detail modal ── */}
+      <EdgeDetailModal
+        isOpen={edgeModalOpen}
+        edge={selectedEdge}
+        onClose={closeEdgeModal}
       />
     </div>
   )

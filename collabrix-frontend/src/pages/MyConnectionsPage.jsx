@@ -97,7 +97,7 @@ export default function MyConnectionsPage() {
       const other = isFromMe ? c.toEmployee : c.fromEmployee
       return (
         other?.name?.toLowerCase().includes(q) ||
-        other?.account?.toLowerCase().includes(q) ||
+        other?.department?.toLowerCase().includes(q) ||
         other?.designation?.toLowerCase().includes(q)
       )
     })
@@ -111,7 +111,7 @@ export default function MyConnectionsPage() {
 
   // ── Tab definitions ──────────────────────────────────────────────────────
   const TABS = [
-    { label: 'My Connections', count: connLoading ? null : approved.length },
+    { label: 'Total Direct Connections', count: connLoading ? null : approved.length },
     { label: 'Pending', count: pending.length > 0 ? pending.length : null, highlight: true },
     { label: 'Graph View', count: null },
   ]
@@ -123,9 +123,9 @@ export default function MyConnectionsPage() {
       <div className="px-6 pt-6 pb-0 bg-white border-b border-gray-200">
         <div className="flex items-end justify-between mb-4">
           <div>
-            <h2 className="text-xl font-bold text-gray-900">My Connections</h2>
+            <h2 className="text-xl font-bold text-gray-900">Total Direct Connections</h2>
             {!connLoading && (
-              <p className="text-sm text-gray-400 mt-0.5">
+              <p className="text-base text-gray-600 leading-relaxed mt-0.5">
                 {approved.length} approved · {pending.length} pending approval
               </p>
             )}
@@ -147,7 +147,7 @@ export default function MyConnectionsPage() {
                 'flex items-center gap-2 px-4 py-3 text-sm font-medium border-b-2 transition-colors -mb-px',
                 activeTab === i
                   ? 'border-brand-sidebar text-brand-sidebar'
-                  : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300',
+                  : 'border-transparent text-gray-700 hover:text-gray-700 hover:border-gray-300',
               ].join(' ')}
             >
               {tab.label}
@@ -159,7 +159,7 @@ export default function MyConnectionsPage() {
                       ? 'bg-amber-500 text-white'
                       : activeTab === i
                         ? 'bg-brand-sidebar text-white'
-                        : 'bg-gray-100 text-gray-500',
+                        : 'bg-gray-100 text-gray-700',
                   ].join(' ')}
                 >
                   {tab.count > 99 ? '99+' : tab.count}
@@ -178,20 +178,20 @@ export default function MyConnectionsPage() {
           <div className="space-y-4 max-w-3xl">
             {/* Search */}
             <div className="relative">
-              <span className="absolute inset-y-0 left-3 flex items-center text-gray-400 pointer-events-none">
+              <span className="absolute inset-y-0 left-3 flex items-center text-gray-600 pointer-events-none">
                 <IconSearch />
               </span>
               <input
                 type="text"
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
-                placeholder="Search by name, account, or designation…"
+                placeholder="Search by name, department, or designation…"
                 className="w-full pl-9 pr-4 py-2.5 bg-white border border-gray-200 rounded-xl text-sm text-gray-800 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-brand-sidebar/30 focus:border-brand-sidebar"
               />
               {search && (
                 <button
                   onClick={() => setSearch('')}
-                  className="absolute inset-y-0 right-3 flex items-center text-gray-400 hover:text-gray-600"
+                  className="absolute inset-y-0 right-3 flex items-center text-gray-600 hover:text-gray-600"
                   aria-label="Clear search"
                 >
                   <IconX />
@@ -201,7 +201,7 @@ export default function MyConnectionsPage() {
 
             {/* Results count */}
             {!connLoading && search && (
-              <p className="text-xs text-gray-400">
+              <p className="text-xs text-gray-600">
                 {filtered.length} result{filtered.length !== 1 ? 's' : ''} for "{search}"
               </p>
             )}
@@ -215,7 +215,7 @@ export default function MyConnectionsPage() {
                 title={search ? 'No matches found' : 'No connections yet'}
                 subtitle={
                   search
-                    ? 'Try a different name or account.'
+                    ? 'Try a different name or department.'
                     : 'Add your first connection to get started.'
                 }
               />
@@ -251,7 +251,7 @@ export default function MyConnectionsPage() {
               />
             ) : (
               <>
-                <p className="text-xs font-medium text-gray-500 uppercase tracking-wider">
+                <p className="text-xs font-medium text-gray-700 uppercase tracking-wider">
                   {pending.length} request{pending.length !== 1 ? 's' : ''} awaiting your approval
                 </p>
                 <div className="space-y-3">
@@ -273,7 +273,7 @@ export default function MyConnectionsPage() {
           <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden flex flex-col min-h-[600px] h-[calc(100vh-240px)]">
             <div className="px-5 py-4 border-b border-gray-100 flex-shrink-0">
               <h3 className="text-base font-semibold text-gray-900">My Direct Network</h3>
-              <p className="text-xs text-gray-400 mt-0.5">
+              <p className="text-xs text-gray-600 mt-0.5">
                 Your direct connections and their relationships
               </p>
             </div>
@@ -282,6 +282,8 @@ export default function MyConnectionsPage() {
                 graphData={graphData}
                 loading={graphLoading}
                 currentUserId={user?.employeeId}
+                currentUserDesignation={user?.designation}
+                isDirectOnly={true}
               />
             </div>
           </div>
@@ -328,11 +330,11 @@ function ConnectionSkeleton({ count = 5 }) {
 function EmptyState({ icon, title, subtitle }) {
   return (
     <div className="flex flex-col items-center gap-3 py-16 text-center">
-      <div className="w-14 h-14 rounded-full bg-gray-100 flex items-center justify-center text-gray-400">
+      <div className="w-14 h-14 rounded-full bg-gray-100 flex items-center justify-center text-gray-600">
         <span className="w-7 h-7">{icon}</span>
       </div>
       <p className="text-sm font-semibold text-gray-600">{title}</p>
-      {subtitle && <p className="text-xs text-gray-400 max-w-xs">{subtitle}</p>}
+      {subtitle && <p className="text-xs text-gray-600 max-w-xs">{subtitle}</p>}
     </div>
   )
 }

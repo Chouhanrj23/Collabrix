@@ -6,7 +6,7 @@ import api from './axios'
  * Returns: AuthResponse { token, employeeId, username, name, designation, grade, expiresIn }
  *
  * GET /api/auth/me
- * Returns: EmployeeDto { id, username, name, email, designation, grade, account, project, joiningDate }
+ * Returns: EmployeeDto { id, username, name, email, designation, grade, department, joiningDate }
  */
 export const authService = {
   login: (email, password) =>

@@ -7,11 +7,13 @@ import { getInitials } from '../utils/formatters'
 import { DesignationBadge } from '../components/common/Badge'
 
 const INITIAL_FORM = {
-  targetEmail:      '',
+  targetEmail: '',
   relationshipType: '',
-  account:          '',
-  project:          '',
-  duration:         '',
+  department: '',
+  account: '',
+  project: '',
+  startDate: '',
+  endDate: '',
 }
 
 const INPUT_CLASS = [
@@ -24,38 +26,38 @@ export default function AddConnectionPage() {
   const { user } = useAuth()
 
   // ── Form state ───────────────────────────────────────────────────────────
-  const [form,             setForm]             = useState(INITIAL_FORM)
+  const [form, setForm] = useState(INITIAL_FORM)
   const [selectedEmployee, setSelectedEmployee] = useState(null)
 
   // ── Employee search state ────────────────────────────────────────────────
-  const [employeeQuery,    setEmployeeQuery]    = useState('')
-  const [empSuggestions,   setEmpSuggestions]   = useState([])
-  const [empDropdownOpen,  setEmpDropdownOpen]  = useState(false)
-  const [empSearching,     setEmpSearching]     = useState(false)
+  const [employeeQuery, setEmployeeQuery] = useState('')
+  const [empSuggestions, setEmpSuggestions] = useState([])
+  const [empDropdownOpen, setEmpDropdownOpen] = useState(false)
+  const [empSearching, setEmpSearching] = useState(false)
   const empContainerRef = useRef(null)
-  const empTimerRef     = useRef(null)
+  const empTimerRef = useRef(null)
 
-  // ── Account autocomplete state ───────────────────────────────────────────
-  const [accountList,       setAccountList]       = useState([])
-  const [accountSuggestions,setAccountSuggestions]= useState([])
-  const [acctDropdownOpen,  setAcctDropdownOpen]  = useState(false)
-  const acctContainerRef = useRef(null)
+  // ── Department autocomplete state ─────────────────────────────────────────
+  const [departmentList, setDepartmentList] = useState([])
+  const [departmentSuggestions, setDepartmentSuggestions] = useState([])
+  const [deptDropdownOpen, setDeptDropdownOpen] = useState(false)
+  const deptContainerRef = useRef(null)
 
   // ── Submit state ─────────────────────────────────────────────────────────
   const [submitting, setSubmitting] = useState(false)
-  const [success,    setSuccess]    = useState('')
-  const [error,      setError]      = useState('')
+  const [success, setSuccess] = useState('')
+  const [error, setError] = useState('')
 
-  // ── Load account list on mount ───────────────────────────────────────────
+  // ── Load department list on mount ─────────────────────────────────────────
   useEffect(() => {
-    employeeService.getAccounts().then(setAccountList).catch(() => {})
+    employeeService.getDepartments().then(setDepartmentList).catch(() => { })
   }, [])
 
   // ── Close dropdowns on outside click ────────────────────────────────────
   useEffect(() => {
     function handleOutside(e) {
-      if (empContainerRef.current  && !empContainerRef.current.contains(e.target))  setEmpDropdownOpen(false)
-      if (acctContainerRef.current && !acctContainerRef.current.contains(e.target)) setAcctDropdownOpen(false)
+      if (empContainerRef.current && !empContainerRef.current.contains(e.target)) setEmpDropdownOpen(false)
+      if (deptContainerRef.current && !deptContainerRef.current.contains(e.target)) setDeptDropdownOpen(false)
     }
     document.addEventListener('mousedown', handleOutside)
     return () => document.removeEventListener('mousedown', handleOutside)
@@ -97,8 +99,8 @@ export default function AddConnectionPage() {
     setForm((f) => ({
       ...f,
       targetEmail: emp.email,
-      // Pre-fill account from employee's own account if field is empty
-      account: f.account || emp.account || '',
+      // Pre-fill department from employee's own department if field is empty
+      department: f.department || emp.department || '',
     }))
   }
 
@@ -108,18 +110,18 @@ export default function AddConnectionPage() {
     setForm((f) => ({ ...f, targetEmail: '' }))
   }
 
-  // ── Account autocomplete ─────────────────────────────────────────────────
-  function handleAccountInput(val) {
-    setForm((f) => ({ ...f, account: val }))
+  // ── Department autocomplete ──────────────────────────────────────────────
+  function handleDepartmentInput(val) {
+    setForm((f) => ({ ...f, department: val }))
     if (!val.trim()) {
-      setAcctDropdownOpen(false)
+      setDeptDropdownOpen(false)
       return
     }
-    const matches = accountList.filter((a) =>
+    const matches = departmentList.filter((a) =>
       a.toLowerCase().includes(val.toLowerCase())
     )
-    setAccountSuggestions(matches)
-    setAcctDropdownOpen(matches.length > 0)
+    setDepartmentSuggestions(matches)
+    setDeptDropdownOpen(matches.length > 0)
   }
 
   // ── Form submit ──────────────────────────────────────────────────────────
@@ -157,9 +159,12 @@ export default function AddConnectionPage() {
   const isValid =
     !!form.targetEmail &&
     !!form.relationshipType &&
-    !!form.account.trim() &&
-    !!form.project.trim() &&
-    !!form.duration.trim()
+    !!form.department.trim() &&
+    !!form.account &&
+    !!form.project &&
+    !!form.startDate &&
+    !!form.endDate &&
+    new Date(form.endDate).getTime() >= new Date(form.startDate).getTime()
 
   // ── Render ────────────────────────────────────────────────────────────────
   return (
@@ -168,7 +173,7 @@ export default function AddConnectionPage() {
       {/* ── Page header ─────────────────────────────────────────────────── */}
       <div>
         <h2 className="text-xl font-bold text-gray-900">Add Connection</h2>
-        <p className="text-sm text-gray-400 mt-1">
+        <p className="text-base text-gray-600 leading-relaxed mt-1">
           Send a connection request to a colleague. It becomes active once they approve it.
         </p>
       </div>
@@ -221,7 +226,7 @@ export default function AddConnectionPage() {
 
             {/* Search input */}
             <div className="relative">
-              <span className="absolute inset-y-0 left-3 flex items-center text-gray-400 pointer-events-none">
+              <span className="absolute inset-y-0 left-3 flex items-center text-gray-600 pointer-events-none">
                 {empSearching ? <Spinner /> : <IconSearch className="w-4 h-4" />}
               </span>
               <input
@@ -237,7 +242,7 @@ export default function AddConnectionPage() {
                 <button
                   type="button"
                   onClick={clearEmployee}
-                  className="absolute inset-y-0 right-3 flex items-center text-gray-400 hover:text-gray-600 text-xs font-medium gap-1"
+                  className="absolute inset-y-0 right-3 flex items-center text-gray-600 hover:text-gray-600 text-xs font-medium gap-1"
                 >
                   <IconX className="w-3.5 h-3.5" /> Clear
                 </button>
@@ -263,7 +268,7 @@ export default function AddConnectionPage() {
                         </div>
                         <div className="min-w-0">
                           <p className="text-sm font-medium text-gray-800 truncate">{emp.name}</p>
-                          <p className="text-xs text-gray-400 truncate">{emp.email}</p>
+                          <p className="text-xs text-gray-600 truncate">{emp.email}</p>
                         </div>
                         <div className="flex-shrink-0 ml-auto">
                           <DesignationBadge designation={emp.designation} />
@@ -276,7 +281,7 @@ export default function AddConnectionPage() {
 
               {/* No results hint */}
               {empDropdownOpen && !empSearching && empSuggestions.length === 0 && employeeQuery.length >= 2 && (
-                <div className="absolute z-20 left-0 right-0 mt-1 bg-white border border-gray-200 rounded-xl shadow-lg px-4 py-3 text-sm text-gray-400">
+                <div className="absolute z-20 left-0 right-0 mt-1 bg-white border border-gray-200 rounded-xl shadow-lg px-4 py-3 text-sm text-gray-600">
                   No employees found for "{employeeQuery}"
                 </div>
               )}
@@ -295,7 +300,7 @@ export default function AddConnectionPage() {
                   <p className="text-sm font-semibold text-gray-900 truncate">{selectedEmployee.name}</p>
                   <div className="flex items-center gap-2 mt-0.5 flex-wrap">
                     <DesignationBadge designation={selectedEmployee.designation} />
-                    <span className="text-xs text-gray-400">{selectedEmployee.email}</span>
+                    <span className="text-xs text-gray-600">{selectedEmployee.email}</span>
                   </div>
                 </div>
                 <IconCheckCircle className="w-5 h-5 text-emerald-500 flex-shrink-0" />
@@ -308,7 +313,7 @@ export default function AddConnectionPage() {
         <div className="px-6 py-5 border-b border-gray-100">
           <SectionHeading step="2" title="Relationship Type" />
 
-          <p className="text-xs text-gray-400 mt-1 mb-4">
+          <p className="text-xs text-gray-600 mt-1 mb-4">
             How are you collaborating with this person?
           </p>
 
@@ -338,61 +343,80 @@ export default function AddConnectionPage() {
             })}
           </div>
           {!form.relationshipType && (
-            <p className="text-xs text-gray-400 mt-2">Select one to continue</p>
+            <p className="text-xs text-gray-600 mt-2">Select one to continue</p>
           )}
         </div>
 
         {/* ── Section 3: Connection details ── */}
         <div className="px-6 py-5 border-b border-gray-100">
           <SectionHeading step="3" title="Connection Details" />
-          <p className="text-xs text-gray-400 mt-1 mb-4">
+          <p className="text-xs text-gray-600 mt-1 mb-4">
             Provide context for this working relationship.
           </p>
 
-          {/* Account + Project */}
+          {/* Department */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
 
-            {/* Account with autocomplete */}
-            <div ref={acctContainerRef}>
+            {/* Department with autocomplete */}
+            <div ref={deptContainerRef}>
               <label className="block text-sm font-medium text-gray-700 mb-1.5">
-                Account <Required />
+                Department <Required />
               </label>
               <div className="relative">
                 <input
                   type="text"
-                  value={form.account}
-                  onChange={(e) => handleAccountInput(e.target.value)}
-                  placeholder="e.g. TechCorp India"
+                  value={form.department}
+                  onChange={(e) => handleDepartmentInput(e.target.value)}
+                  placeholder="e.g. Software Engineering"
                   className={INPUT_CLASS}
                   autoComplete="off"
                 />
-                {acctDropdownOpen && (
+                {deptDropdownOpen && (
                   <div className="absolute z-20 left-0 right-0 mt-1 bg-white border border-gray-200 rounded-xl shadow-lg overflow-hidden max-h-40 overflow-y-auto">
-                    {accountSuggestions.map((acct) => (
+                    {departmentSuggestions.map((dept) => (
                       <button
-                        key={acct}
+                        key={dept}
                         type="button"
                         onMouseDown={() => {
-                          setForm((f) => ({ ...f, account: acct }))
-                          setAcctDropdownOpen(false)
+                          setForm((f) => ({ ...f, department: dept }))
+                          setDeptDropdownOpen(false)
                         }}
                         className="w-full px-4 py-2.5 text-left text-sm text-gray-700 hover:bg-gray-50 transition-colors"
                       >
-                        {acct}
+                        {dept}
                       </button>
                     ))}
                   </div>
                 )}
               </div>
-              {selectedEmployee?.account && !form.account && (
+              {selectedEmployee?.department && !form.department && (
                 <button
                   type="button"
-                  onClick={() => setForm((f) => ({ ...f, account: selectedEmployee.account }))}
+                  onClick={() => setForm((f) => ({ ...f, department: selectedEmployee.department }))}
                   className="mt-1 text-xs text-brand-light underline"
                 >
-                  Use {selectedEmployee.name}'s account ({selectedEmployee.account})
+                  Use {selectedEmployee.name}'s department ({selectedEmployee.department})
                 </button>
               )}
+            </div>
+
+            {/* Account */}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1.5">
+                Account <Required />
+              </label>
+              <select
+                name="account"
+                value={form.account}
+                onChange={(e) => setForm((f) => ({ ...f, account: e.target.value }))}
+                required
+                className={INPUT_CLASS}
+              >
+                <option value="">Select Account</option>
+                <option value="MS">MS</option>
+                <option value="GS">GS</option>
+                <option value="OTHERS">Others</option>
+              </select>
             </div>
 
             {/* Project */}
@@ -400,32 +424,50 @@ export default function AddConnectionPage() {
               <label className="block text-sm font-medium text-gray-700 mb-1.5">
                 Project <Required />
               </label>
-              <input
-                type="text"
+              <select
+                name="project"
                 value={form.project}
                 onChange={(e) => setForm((f) => ({ ...f, project: e.target.value }))}
-                placeholder="e.g. ERP Modernisation"
+                required
+                className={INPUT_CLASS}
+              >
+                <option value="">Select Project</option>
+                <option value="BANKING">Banking</option>
+                <option value="INSURANCE">Insurance</option>
+                <option value="HOSPITALITY">Hospitality</option>
+                <option value="AI_IN_SDLC">AI in SDLC</option>
+                <option value="INTERNAL">Internal</option>
+                <option value="OTHER">Other</option>
+              </select>
+            </div>
+          </div>
+
+          {/* Dates */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mt-4">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1.5">
+                Start Date <Required />
+              </label>
+              <input
+                type="date"
+                value={form.startDate}
+                onChange={(e) => setForm((f) => ({ ...f, startDate: e.target.value }))}
+                className={INPUT_CLASS}
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1.5">
+                End Date <Required />
+              </label>
+              <input
+                type="date"
+                value={form.endDate}
+                onChange={(e) => setForm((f) => ({ ...f, endDate: e.target.value }))}
                 className={INPUT_CLASS}
               />
             </div>
           </div>
 
-          {/* Duration */}
-          <div className="mt-4">
-            <label className="block text-sm font-medium text-gray-700 mb-1.5">
-              Duration <Required />
-            </label>
-            <input
-              type="text"
-              value={form.duration}
-              onChange={(e) => setForm((f) => ({ ...f, duration: e.target.value }))}
-              placeholder="e.g. 6 months, Jan 2024 – Jun 2024"
-              className={INPUT_CLASS}
-            />
-            <p className="mt-1 text-xs text-gray-400">
-              Describe how long you've worked together or plan to.
-            </p>
-          </div>
         </div>
 
         {/* ── Form actions ── */}
@@ -507,7 +549,7 @@ function IconSearch({ className = 'w-4 h-4' }) {
 function IconX({ className = 'w-4 h-4' }) {
   return (
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" className={className}>
-      <line x1="18" y1="6"  x2="6"  y2="18" /><line x1="6" y1="6" x2="18" y2="18" />
+      <line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" />
     </svg>
   )
 }

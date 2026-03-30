@@ -13,11 +13,12 @@ public record EmployeeDto(
         String email,
         Designation designation,
         Grade grade,
+        String department,
         String account,
-        String project,
         LocalDate joiningDate,
-        String profileImageUrl
-) {
+        String profileImageUrl,
+        String project,
+        boolean active) {
     public static EmployeeDto from(Employee e) {
         return new EmployeeDto(
                 e.getId(),
@@ -26,10 +27,11 @@ public record EmployeeDto(
                 e.getEmail(),
                 e.getDesignation(),
                 e.getGrade(),
+                e.getDepartment(),
                 e.getAccount(),
-                e.getProject(),
                 e.getJoiningDate(),
-                e.getProfileImageUrl()
-        );
+                e.getProfileImageUrl(),
+                e.getProject(),
+                e.isActive());
     }
 }

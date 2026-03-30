@@ -43,10 +43,11 @@ public class Employee {
     @ConvertWith(converter = GradeConverter.class)
     private Grade grade;
 
+    private String department;
     private String account;
-    private String project;
     private LocalDate joiningDate;
     private String profileImageUrl;
+    private String project;
 
     @Builder.Default
     private boolean active = true;
@@ -90,7 +91,16 @@ public class Employee {
 
         @Override
         public Designation read(@NonNull Value source) {
-            return source.isNull() ? null : Designation.valueOf(source.asString());
+            if (source.isNull()) return null;
+            // Normalise: trim, uppercase, replace spaces/hyphens with underscores
+            // so that values like "Associate Consultant" or "Senior_Consultant" all resolve correctly.
+            String val = source.asString().trim().toUpperCase().replace(" ", "_").replace("-", "_");
+            if ("ASSOCIATE_CONSULTANT".equals(val)) return Designation.ASSOCIATE;
+            try {
+                return Designation.valueOf(val);
+            } catch (IllegalArgumentException e) {
+                return null; // unknown designation — load node gracefully rather than crashing
+            }
         }
     }
 

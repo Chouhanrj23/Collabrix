@@ -4,7 +4,7 @@ import { useAuth } from '../context/AuthContext'
 import PendingRequestCard from '../components/connections/PendingRequestCard'
 import CollaborationGraph from '../components/graph/CollaborationGraph'
 import Alert from '../components/common/Alert'
-import { DesignationBadge, GradeBadge } from '../components/common/Badge'
+import { DesignationBadge } from '../components/common/Badge'
 import { getInitials } from '../utils/formatters'
 import { DESIGNATION_COLORS } from '../utils/designationUtils'
 
@@ -12,16 +12,16 @@ export default function ManagerPage() {
   const { user } = useAuth()
 
   // ── Data state ───────────────────────────────────────────────────────────
-  const [dashboard,   setDashboard]   = useState(null)
+  const [dashboard, setDashboard] = useState(null)
   const [pendingList, setPendingList] = useState([])
 
   // ── Loading / error ──────────────────────────────────────────────────────
   const [loading, setLoading] = useState(true)
-  const [error,   setError]   = useState('')
+  const [error, setError] = useState('')
 
   // ── Selected reportee + their graph ─────────────────────────────────────
-  const [selectedReportee,    setSelectedReportee]    = useState(null)
-  const [reporteeGraph,       setReporteeGraph]       = useState(null)
+  const [selectedReportee, setSelectedReportee] = useState(null)
+  const [reporteeGraph, setReporteeGraph] = useState(null)
   const [reporteeGraphLoading, setReporteeGraphLoading] = useState(false)
 
   // ── Single API call — pendingApprovals already in ManagerDashboardDto ───
@@ -55,7 +55,7 @@ export default function ManagerPage() {
     setPendingList((prev) => prev.filter((r) => r.id !== id))
   }, [])
 
-  const reportees       = dashboard?.reportees        ?? []
+  const reportees = dashboard?.reportees ?? []
   const totalConnections = dashboard?.totalConnections ?? 0
 
   return (
@@ -65,7 +65,7 @@ export default function ManagerPage() {
       <div className="px-6 pt-6 pb-4 bg-white border-b border-gray-200">
         <h2 className="text-xl font-bold text-gray-900">Manager Dashboard</h2>
         {!loading && (
-          <p className="text-sm text-gray-400 mt-0.5">
+          <p className="text-base text-gray-600 leading-relaxed mt-0.5">
             Overview of your team, their connections, and pending approvals
           </p>
         )}
@@ -167,11 +167,11 @@ export default function ManagerPage() {
                     <h3 className="text-base font-semibold text-gray-900">
                       {selectedReportee.name}'s Network
                     </h3>
-                    <p className="text-xs text-gray-400 mt-0.5">Collaboration connections</p>
+                    <p className="text-xs text-gray-600 mt-0.5">Collaboration connections</p>
                   </div>
                   <button
                     onClick={() => { setSelectedReportee(null); setReporteeGraph(null) }}
-                    className="flex items-center gap-1.5 px-3 py-1.5 text-sm text-gray-500 hover:text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors"
+                    className="flex items-center gap-1.5 px-3 py-1.5 text-sm text-gray-700 hover:text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors"
                   >
                     <IconX />
                     <span>Close</span>
@@ -213,18 +213,17 @@ function ReporteeRow({ emp, isSelected, onClick }) {
         <p className="text-sm font-semibold text-gray-900 truncate">{emp.name}</p>
         <div className="flex items-center gap-1.5 mt-0.5 flex-wrap">
           <DesignationBadge designation={emp.designation} />
-          {emp.grade && <GradeBadge grade={emp.grade} />}
         </div>
-        {emp.account && (
-          <p className="text-xs text-gray-400 mt-0.5 truncate">
-            {emp.account}{emp.project ? ` · ${emp.project}` : ''}
+        {emp.department && (
+          <p className="text-xs text-gray-600 mt-0.5 truncate">
+            {emp.department}
           </p>
         )}
       </div>
       <span
         className={[
           'flex-shrink-0 w-6 h-6 rounded-full flex items-center justify-center transition-colors',
-          isSelected ? 'bg-brand-sidebar text-white' : 'bg-gray-100 text-gray-400',
+          isSelected ? 'bg-brand-sidebar text-white' : 'bg-gray-100 text-gray-600',
         ].join(' ')}
       >
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" className="w-3.5 h-3.5">
@@ -257,7 +256,7 @@ function StatCard({ label, value, icon, highlight }) {
           'text-2xl font-bold',
           highlight ? 'text-amber-600' : 'text-gray-900',
         ].join(' ')}>{value}</p>
-        <p className="text-xs text-gray-400 mt-0.5">{label}</p>
+        <p className="text-xs text-gray-600 mt-0.5">{label}</p>
       </div>
     </div>
   )
@@ -268,11 +267,11 @@ function StatCard({ label, value, icon, highlight }) {
 function EmptyState({ icon, title, subtitle }) {
   return (
     <div className="flex flex-col items-center gap-2 py-12 text-center px-4">
-      <div className="w-12 h-12 rounded-full bg-gray-100 flex items-center justify-center text-gray-400">
+      <div className="w-12 h-12 rounded-full bg-gray-100 flex items-center justify-center text-gray-600">
         <span className="w-6 h-6">{icon}</span>
       </div>
       <p className="text-sm font-semibold text-gray-600">{title}</p>
-      {subtitle && <p className="text-xs text-gray-400 max-w-xs">{subtitle}</p>}
+      {subtitle && <p className="text-xs text-gray-600 max-w-xs">{subtitle}</p>}
     </div>
   )
 }
@@ -355,8 +354,8 @@ function IconCheck() {
 function IconX() {
   return (
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" className="w-4 h-4">
-      <line x1="18" y1="6"  x2="6"  y2="18" />
-      <line x1="6"  y1="6"  x2="18" y2="18" />
+      <line x1="18" y1="6" x2="6" y2="18" />
+      <line x1="6" y1="6" x2="18" y2="18" />
     </svg>
   )
 }

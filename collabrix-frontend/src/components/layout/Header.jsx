@@ -47,7 +47,7 @@ export default function Header({ title, onMenuClick }) {
       <div className="flex items-center gap-3">
         <button
           onClick={onMenuClick}
-          className="p-2 rounded-xl text-gray-400 hover:bg-gray-100 hover:text-gray-600 transition-all duration-150"
+          className="p-2 rounded-xl text-gray-600 hover:bg-gray-100 hover:text-gray-600 transition-all duration-150"
           aria-label="Toggle navigation"
         >
           <IconMenu />
@@ -62,7 +62,7 @@ export default function Header({ title, onMenuClick }) {
         <div className="relative" ref={notifRef}>
           <button
             onClick={() => setNotifOpen((v) => !v)}
-            className="relative p-2 rounded-xl text-gray-400 hover:bg-gray-100 hover:text-gray-600 transition-all duration-150"
+            className="relative p-2 rounded-xl text-gray-600 hover:bg-gray-100 hover:text-gray-600 transition-all duration-150"
             aria-label={`Notifications${pendingList.length > 0 ? ` (${pendingList.length} pending)` : ''}`}
           >
             <IconBell />
@@ -80,7 +80,7 @@ export default function Header({ title, onMenuClick }) {
                 <span className="text-sm font-semibold text-gray-800">Pending Requests</span>
                 <button
                   onClick={() => setNotifOpen(false)}
-                  className="p-1 rounded-lg text-gray-400 hover:text-gray-600 hover:bg-gray-100 transition-all duration-150"
+                  className="p-1 rounded-lg text-gray-600 hover:text-gray-600 hover:bg-gray-100 transition-all duration-150"
                   aria-label="Close"
                 >
                   <IconX />
@@ -88,7 +88,7 @@ export default function Header({ title, onMenuClick }) {
               </div>
 
               {pendingList.length === 0 ? (
-                <p className="px-4 py-8 text-sm text-gray-400 text-center">
+                <p className="px-4 py-8 text-sm text-gray-600 text-center">
                   No pending requests
                 </p>
               ) : (
@@ -147,7 +147,7 @@ export default function Header({ title, onMenuClick }) {
             <button
               onClick={logout}
               title="Logout"
-              className="p-2 ml-1 rounded-xl text-gray-400 hover:bg-red-50 hover:text-red-500 transition-all duration-150"
+              className="p-2 ml-1 rounded-xl text-gray-600 hover:bg-red-50 hover:text-red-500 transition-all duration-150"
               aria-label="Logout"
             >
               <IconLogout />

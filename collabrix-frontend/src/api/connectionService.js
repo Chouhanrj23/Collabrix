@@ -7,9 +7,10 @@ import api from './axios'
  *   relationshipType: string          (enum: REPORTING_PARTNER | ENGAGEMENT_PARTNER |
  *                                           REPORTING_MANAGER | ENGAGEMENT_MANAGER |
  *                                           INTERNAL_PRODUCT_DEVELOPMENT | PEER | OTHERS)
+ *   department:       string
  *   account:          string
- *   project:          string
- *   duration:         string
+ *   startDate:        string (ISO)
+ *   endDate:          string (ISO)
  * }
  * Returns: ConnectionRequestResponseDto
  *
@@ -31,7 +32,7 @@ import api from './axios'
  *
  * ConnectionRequestResponseDto shape:
  * { id, fromEmployee: EmployeeDto, toEmployee: EmployeeDto, relationshipType,
- *   status (PENDING|APPROVED|REJECTED), account, project, duration, createdAt, resolvedAt }
+ *   status (PENDING|APPROVED|REJECTED), department, duration, createdAt, resolvedAt }
  */
 export const connectionService = {
   request: (data) =>

@@ -3,9 +3,9 @@ import { useAuth } from '../../context/AuthContext'
 import { employeeService } from '../../api/employeeService'
 import { feedbackService } from '../../api/feedbackService'
 import { connectionService } from '../../api/connectionService'
-import { DESIGNATION_COLORS, isSeniorTo, canViewFeedback } from '../../utils/designationUtils'
-import { DesignationBadge, GradeBadge, RelationshipBadge } from '../common/Badge'
-import { getInitials, formatDate } from '../../utils/formatters'
+import { DESIGNATION_COLORS, isSeniorTo } from '../../utils/designationUtils'
+import { DesignationBadge, RelationshipBadge } from '../common/Badge'
+import { getInitials, formatDate, getDuration } from '../../utils/formatters'
 
 /**
  * NodeDetailModal
@@ -19,31 +19,34 @@ import { getInitials, formatDate } from '../../utils/formatters'
  * @param {number}   currentUserId - ID of the logged-in employee
  * @param {function} onClose       - close handler
  */
-export default function NodeDetailModal({ isOpen, node, edges = [], currentUserId, onClose }) {
+export default function NodeDetailModal({ isOpen, node, edges = [], currentUserId, currentUserDesignation, onClose }) {
   const { user } = useAuth()
 
-  const [employee,       setEmployee]       = useState(null)
-  const [feedbackData,   setFeedbackData]   = useState(null)
-  const [feedbackList,   setFeedbackList]   = useState([])
-  const [duration,       setDuration]       = useState(null)
-  const [detailLoading,  setDetailLoading]  = useState(false)
-  const [uploading,      setUploading]      = useState(false)
-  const [profileImage,   setProfileImage]   = useState(null)
+  const [employee, setEmployee] = useState(null)
+  const [feedbackData, setFeedbackData] = useState(null)
+  const [feedbackList, setFeedbackList] = useState([])
+  const [duration, setDuration] = useState(null)
+  const [detailLoading, setDetailLoading] = useState(false)
+  const [uploading, setUploading] = useState(false)
+  const [profileImage, setProfileImage] = useState(null)
   const fileInputRef = useRef(null)
 
   const isCurrentUser = node?.id === currentUserId
-  // Show restricted info if viewer is junior to the clicked node (server enforces too)
-  const isSenior      = node && user && isSeniorTo(node.designation, user.designation)
-  const showFullInfo  = isCurrentUser || !isSenior
+  // Use prop-supplied designation first; fall back to auth context.
+  // Hides connection details and any expand/view-connections actions for senior nodes.
+  const viewerDesignation = currentUserDesignation ?? user?.designation
+  const isSenior = node && viewerDesignation && isSeniorTo(node.designation, viewerDesignation)
+  const showFullInfo = isCurrentUser || !isSenior
 
-  // Feedback visibility: current user always sees own feedback; seniors can see juniors' feedback
-  const canSeeFeedback = isCurrentUser || (node && user && canViewFeedback(user.designation, node.designation))
+  // Feedback visibility: visible whenever full info is shown (i.e. peer or junior node)
+  const canSeeFeedback = showFullInfo
 
   // Fetch employee details, connections (for duration), and feedback when modal opens
   useEffect(() => {
     if (!isOpen || !node) return
 
     setEmployee(null)
+
     setFeedbackData(null)
     setFeedbackList([])
     setDuration(null)
@@ -55,11 +58,11 @@ export default function NodeDetailModal({ isOpen, node, edges = [], currentUserI
       connectionService.getByEmployee(node.id).catch(() => []),
     ]
 
-    // Fetch feedback: own profile uses getReceived(), viewing a junior uses getReceivedForEmployee()
+    // Fetch feedback: own profile uses getReceived(), others use unrestricted getForEmployee()
     if (canSeeFeedback) {
       const feedbackReq = isCurrentUser
         ? feedbackService.getReceived()
-        : feedbackService.getReceivedForEmployee(node.id)
+        : feedbackService.getForEmployee(node.id)
       requests.push(feedbackReq.catch(() => []))
     }
 
@@ -75,24 +78,25 @@ export default function NodeDetailModal({ isOpen, node, edges = [], currentUserI
               c.status === 'APPROVED' &&
               (c.fromEmployee?.id === currentUserId || c.toEmployee?.id === currentUserId)
           )
-          setDuration(match?.duration ?? connections[0]?.duration ?? null)
+          const connection = match ?? connections[0]
+          setDuration(getDuration(connection?.startDate, connection?.endDate))
         }
 
         if (feedback?.length) {
-          // Sort by date (newest first), cap at 5
+          // Sort by date (newest first), cap display at 3
           const sorted = [...feedback].sort(
             (a, b) => (b.feedbackDate ?? '').localeCompare(a.feedbackDate ?? '')
           )
-          setFeedbackList(sorted.slice(0, 5))
+          setFeedbackList(sorted.slice(0, 3))
 
           const avg = feedback.reduce((sum, f) => sum + f.rating, 0) / feedback.length
           setFeedbackData({
             count: feedback.length,
-            avg:   Math.round(avg * 10) / 10,
+            avg: Math.round(avg * 10) / 10,
           })
         }
       })
-      .catch(() => {})
+      .catch(() => { })
       .finally(() => setDetailLoading(false))
   }, [isOpen, node?.id, isCurrentUser, canSeeFeedback, currentUserId])
 
@@ -127,8 +131,8 @@ export default function NodeDetailModal({ isOpen, node, edges = [], currentUserI
 
   if (!isOpen || !node) return null
 
-  const colors         = DESIGNATION_COLORS[node.designation] ?? { bg: '#64748B' }
-  const displayName    = employee?.name ?? node.label ?? node.name ?? ''
+  const colors = DESIGNATION_COLORS[node.designation] ?? { bg: '#64748B' }
+  const displayName = employee?.name ?? node.label ?? node.name ?? ''
   const connectedEdges = edges.filter((e) => e.from == node.id || e.to == node.id)
 
   return (
@@ -148,7 +152,7 @@ export default function NodeDetailModal({ isOpen, node, edges = [], currentUserI
           <h2 className="text-sm font-semibold text-gray-800">Employee Profile</h2>
           <button
             onClick={onClose}
-            className="p-1.5 rounded-xl text-gray-400 hover:text-gray-600 hover:bg-gray-100 transition-all duration-150"
+            className="p-1.5 rounded-xl text-gray-600 hover:text-gray-600 hover:bg-gray-100 transition-all duration-150"
             aria-label="Close"
           >
             <IconX />
@@ -220,8 +224,15 @@ export default function NodeDetailModal({ isOpen, node, edges = [], currentUserI
                 <h3 className="text-base font-semibold text-gray-900 truncate">{displayName}</h3>
                 <div className="flex flex-wrap gap-1.5 mt-1.5">
                   <DesignationBadge designation={node.designation} />
-                  {(employee?.grade ?? node.grade) && (
-                    <GradeBadge grade={employee?.grade ?? node.grade} />
+                  {employee != null && (
+                    <span
+                      className="badge"
+                      style={employee.active
+                        ? { backgroundColor: '#10B98120', color: '#10B981', borderColor: '#10B98140' }
+                        : { backgroundColor: '#EF444420', color: '#EF4444', borderColor: '#EF444440' }}
+                    >
+                      {employee.active ? 'Active' : 'Inactive'}
+                    </span>
                   )}
                 </div>
               </div>
@@ -230,17 +241,15 @@ export default function NodeDetailModal({ isOpen, node, edges = [], currentUserI
             {showFullInfo ? (
               <>
                 {/* -- Work details -- */}
-                {(employee?.email || employee?.account || employee?.project || duration !== null) && (
+                {(employee?.email || node?.email || employee?.department || node?.department || duration !== null) && (
                   <div className="bg-gray-50/80 rounded-xl p-4 space-y-3 border border-gray-100/80">
-                    {employee.email && (
-                      <DetailRow label="Email" value={employee.email} />
+                    {(employee?.email || node?.email) && (
+                      <DetailRow label="Email" value={employee?.email || node?.email} />
                     )}
-                    {employee.account && (
-                      <DetailRow label="Account" value={employee.account} />
-                    )}
-                    {employee.project && (
-                      <DetailRow label="Project" value={employee.project} />
-                    )}
+                    <DetailRow label="Department" value={employee?.department || node?.department || '—'} />
+                    <DetailRow label="Account" value={employee?.account || node?.account || '—'} />
+                    <DetailRow label="Project" value={employee?.project || node?.project || '—'} />
+                    <DetailRow label="Joining Date" value={formatDate(employee?.joiningDate || node?.joiningDate) || '—'} />
                     <DetailRow label="Duration" value={duration || '\u2014'} />
                   </div>
                 )}
@@ -248,7 +257,7 @@ export default function NodeDetailModal({ isOpen, node, edges = [], currentUserI
                 {/* -- Connection types -- */}
                 {connectedEdges.length > 0 && (
                   <div>
-                    <p className="text-[11px] font-semibold text-gray-400 uppercase tracking-wider mb-2">
+                    <p className="text-[11px] font-semibold text-gray-600 uppercase tracking-wider mb-2">
                       Connection Type{connectedEdges.length > 1 ? 's' : ''}
                     </p>
                     <div className="flex flex-wrap gap-1.5">
@@ -264,7 +273,7 @@ export default function NodeDetailModal({ isOpen, node, edges = [], currentUserI
 
                 {/* -- Feedback section -- */}
                 <div>
-                  <p className="text-[11px] font-semibold text-gray-400 uppercase tracking-wider mb-3">
+                  <p className="text-[11px] font-semibold text-gray-600 uppercase tracking-wider mb-3">
                     Feedback
                   </p>
 
@@ -301,9 +310,14 @@ export default function NodeDetailModal({ isOpen, node, edges = [], currentUserI
                           {feedbackList.map((fb) => (
                             <FeedbackCard key={fb.id} feedback={fb} />
                           ))}
+                          {feedbackData && feedbackData.count > 3 && (
+                            <p className="text-xs text-gray-500 text-center pt-1">
+                              +{feedbackData.count - 3} more — visit Feedback page to see all
+                            </p>
+                          )}
                         </div>
                       ) : (
-                        <p className="text-xs text-gray-400 text-center py-4">
+                        <p className="text-xs text-gray-500 text-center py-4">
                           No feedback available
                         </p>
                       )}
@@ -313,7 +327,7 @@ export default function NodeDetailModal({ isOpen, node, edges = [], currentUserI
                       <div className="flex-shrink-0 w-9 h-9 rounded-xl bg-gray-100 flex items-center justify-center">
                         <IconLockSmall />
                       </div>
-                      <p className="text-xs text-gray-400">
+                      <p className="text-xs text-gray-600">
                         Feedback is restricted based on hierarchy.
                       </p>
                     </div>
@@ -328,7 +342,7 @@ export default function NodeDetailModal({ isOpen, node, edges = [], currentUserI
                 </div>
                 <div>
                   <p className="text-sm font-medium text-gray-600">Profile Restricted</p>
-                  <p className="text-xs text-gray-400 max-w-xs mt-1">
+                  <p className="text-xs text-gray-600 max-w-xs mt-1">
                     Detailed profile is only visible for your peers and direct reports.
                   </p>
                 </div>
@@ -346,7 +360,7 @@ export default function NodeDetailModal({ isOpen, node, edges = [], currentUserI
 function DetailRow({ label, value }) {
   return (
     <div className="flex justify-between items-start gap-4">
-      <span className="text-[11px] font-medium text-gray-400 uppercase tracking-wider flex-shrink-0 pt-px">{label}</span>
+      <span className="text-[11px] font-medium text-gray-600 uppercase tracking-wider flex-shrink-0 pt-px">{label}</span>
       <span className="text-sm text-gray-800 text-right break-all">{value}</span>
     </div>
   )
@@ -366,7 +380,7 @@ function FeedbackCard({ feedback }) {
           <div className="flex items-center justify-between gap-2">
             <p className="text-sm font-medium text-gray-800 truncate">{reviewerName}</p>
             {feedbackDate && (
-              <span className="text-[10px] text-gray-400 flex-shrink-0">
+              <span className="text-[10px] text-gray-600 flex-shrink-0">
                 {formatDate(feedbackDate)}
               </span>
             )}
@@ -380,7 +394,7 @@ function FeedbackCard({ feedback }) {
                 {'★'.repeat(5 - rating)}
               </span>
             )}
-            <span className="text-[10px] text-gray-400 ml-1.5 font-medium">{rating}/5</span>
+            <span className="text-[10px] text-gray-600 ml-1.5 font-medium">{rating}/5</span>
           </div>
           {comment && (
             <p className="text-xs text-gray-600 mt-1.5 leading-relaxed line-clamp-3">
@@ -398,15 +412,15 @@ function FeedbackCard({ feedback }) {
 function IconX() {
   return (
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" className="w-4 h-4">
-      <line x1="18" y1="6"  x2="6"  y2="18" />
-      <line x1="6"  y1="6"  x2="18" y2="18" />
+      <line x1="18" y1="6" x2="6" y2="18" />
+      <line x1="6" y1="6" x2="18" y2="18" />
     </svg>
   )
 }
 
 function IconLock() {
   return (
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" className="w-6 h-6 text-gray-400">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" className="w-6 h-6 text-gray-600">
       <rect x="3" y="11" width="18" height="11" rx="2" ry="2" />
       <path d="M7 11V7a5 5 0 0110 0v4" />
     </svg>
@@ -424,7 +438,7 @@ function IconCamera() {
 
 function IconLockSmall() {
   return (
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" className="w-4 h-4 text-gray-400">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" className="w-4 h-4 text-gray-600">
       <rect x="3" y="11" width="18" height="11" rx="2" ry="2" />
       <path d="M7 11V7a5 5 0 0110 0v4" />
     </svg>

@@ -47,8 +47,7 @@ class AuthServiceTest {
                 .passwordHash("hashedPassword")
                 .designation(Designation.DIRECTOR)
                 .grade(Grade.SENIOR)
-                .account("Collabrix Internal")
-                .project("Firm Leadership")
+                .department("Software Engineering")
                 .joiningDate(LocalDate.of(2016, 4, 1))
                 .active(true)
                 .build();

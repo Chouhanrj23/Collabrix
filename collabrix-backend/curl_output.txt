@@ -1,0 +1,35 @@
+Note: Unnecessary use of -X or --request, POST is already inferred.
+* Host localhost:8080 was resolved.
+* IPv6: ::1
+* IPv4: 127.0.0.1
+  % Total    % Received % Xferd  Average Speed   Time    Time     Time  Current
+                                 Dload  Upload   Total   Spent    Left  Speed
+  0     0    0     0    0     0      0      0 --:--:-- --:--:-- --:--:--     0*   Trying [::1]:8080...
+* Connected to localhost (::1) port 8080
+> POST /api/auth/login HTTP/1.1
+> Host: localhost:8080
+> User-Agent: curl/8.7.1
+> Accept: */*
+> Content-Type: application/json
+> Content-Length: 56
+> 
+} [56 bytes data]
+* upload completely sent off: 56 bytes
+< HTTP/1.1 200 
+< Vary: Origin
+< Vary: Access-Control-Request-Method
+< Vary: Access-Control-Request-Headers
+< X-Content-Type-Options: nosniff
+< X-XSS-Protection: 0
+< Cache-Control: no-cache, no-store, max-age=0, must-revalidate
+< Pragma: no-cache
+< Expires: 0
+< X-Frame-Options: DENY
+< Content-Type: application/json
+< Transfer-Encoding: chunked
+< Date: Fri, 27 Mar 2026 13:03:36 GMT
+< 
+{ [392 bytes data]
+100   441    0   385  100    56   1193    173 --:--:-- --:--:-- --:--:--  1369
+* Connection #0 to host localhost left intact
+{"token":"eyJhbGciOiJIUzUxMiJ9.eyJzdWIiOiI3IiwiZW1haWwiOiJwcmF2ZWVuQGNvbGxhYnJpeC5jb20iLCJkZXNpZ25hdGlvbiI6IkNPTlNVTFRBTlQiLCJpYXQiOjE3NzQ2MTY2MTYsImV4cCI6MTc3NDcwMzAxNn0.pdtCD9b856LWfpNu7TtGjUKYvY-fx2iJVAc0ktzIhOX6vYjkq2Xufbra9WOiet-r0CTcbzSk6paFvK4_kncXIQ","employeeId":7,"username":"praveen","name":"Praveen Agarwal","designation":"CONSULTANT","grade":"JUNIOR","expiresIn":86400000}

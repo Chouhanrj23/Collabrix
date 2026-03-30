@@ -38,7 +38,7 @@ export default memo(function PendingRequestCard({ request, onResolved }) {
         <DesignationBadge designation={from?.designation} />
         <div className="pending-card-meta">
           <RelationshipBadge type={request.relationshipType} />
-          {request.account && <span className="text-muted text-sm">{request.account} · {request.project}</span>}
+          {request.department && <span className="text-muted text-sm">{request.department}</span>}
           {request.duration && <span className="text-muted text-sm">Duration: {request.duration}</span>}
         </div>
         <div className="text-muted text-sm">Requested {formatDate(request.createdAt)}</div>

@@ -26,14 +26,14 @@ public class AuthService {
 
     public AuthResponse login(LoginRequest request) {
         Employee employee = employeeRepository.findByEmail(request.email())
-                .orElseThrow(() -> new ResourceNotFoundException("Employee not found with email: " + request.email()));
+                .orElseThrow(() -> new UnauthorizedAccessException("Invalid email or password"));
 
         if (!passwordEncoder.matches(request.password(), employee.getPasswordHash())) {
             throw new UnauthorizedAccessException("Invalid credentials");
         }
 
         if (!employee.isActive()) {
-            throw new UnauthorizedAccessException("Account is deactivated");
+            throw new UnauthorizedAccessException("User profile is deactivated");
         }
 
         String token = jwtUtil.generateToken(

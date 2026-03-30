@@ -1,0 +1,32 @@
+Note: Unnecessary use of -X or --request, GET is already inferred.
+* Host localhost:5173 was resolved.
+* IPv6: ::1
+* IPv4: 127.0.0.1
+  % Total    % Received % Xferd  Average Speed   Time    Time     Time  Current
+                                 Dload  Upload   Total   Spent    Left  Speed
+  0     0    0     0    0     0      0      0 --:--:-- --:--:-- --:--:--     0*   Trying [::1]:5173...
+* Connected to localhost (::1) port 5173
+> GET /api/graph/visible HTTP/1.1
+> Host: localhost:5173
+> User-Agent: curl/8.7.1
+> Accept: */*
+> Authorization: Bearer eyJhbGciOiJIUzUxMiJ9.eyJzdWIiOiI3IiwiZW1haWwiOiJwcmF2ZWVuQGNvbGxhYnJpeC5jb20iLCJkZXNpZ25hdGlvbiI6IkNPTlNVTFRBTlQiLCJpYXQiOjE3NzQ2MTY2MTYsImV4cCI6MTc3NDcwMzAxNn0.pdtCD9b856LWfpNu7TtGjUKYvY-fx2iJVAc0ktzIhOX6vYjkq2Xufbra9WOiet-r0CTcbzSk6paFvK4_kncXIQ
+> 
+* Request completely sent off
+  0     0    0     0    0     0      0      0 --:--:-- --:--:-- --:--:--     0< HTTP/1.1 200 OK
+< vary: Origin, Access-Control-Request-Method, Access-Control-Request-Headers
+< x-content-type-options: nosniff
+< x-xss-protection: 0
+< cache-control: no-cache, no-store, max-age=0, must-revalidate
+< pragma: no-cache
+< expires: 0
+< x-frame-options: DENY
+< content-type: application/json
+< transfer-encoding: chunked
+< date: Fri, 27 Mar 2026 13:05:39 GMT
+< connection: close
+< 
+{ [2116 bytes data]
+100  2109    0  2109    0     0   4086      0 --:--:-- --:--:-- --:--:--  4079
+* Closing connection
+{"nodes":[{"id":3,"label":"Kratika Sharma","designation":"MANAGER","grade":"SENIOR","color":"#2E86C1","department":null,"title":"Manager - null","profileImageUrl":null},{"id":4,"label":"Karthik Pai","designation":"MANAGER","grade":"SENIOR","color":"#2E86C1","department":null,"title":"Manager - null","profileImageUrl":null},{"id":6,"label":"Raj Chouhan","designation":"CONSULTANT","grade":"JUNIOR","color":"#27AE60","department":null,"title":"Consultant - null","profileImageUrl":null},{"id":7,"label":"Praveen Agarwal","designation":"CONSULTANT","grade":"JUNIOR","color":"#27AE60","department":null,"title":"Consultant - null","profileImageUrl":null},{"id":9,"label":"Gagan Yadav","designation":"ASSOCIATE","grade":"JUNIOR","color":"#E74C3C","department":null,"title":"Associate - null","profileImageUrl":null}],"edges":[{"id":"bea6ecb3-942e-440a-b989-471d4487dea1","from":6,"to":3,"label":"Reporting Manager","arrows":"to","relationshipType":"REPORTING_MANAGER","since":null,"department":null,"account":null,"project":null,"startDate":null,"endDate":null,"feedback":null},{"id":"ffda2fff-d551-41b6-bf13-5bbb35f467c1","from":3,"to":7,"label":"Reporting Manager","arrows":"to","relationshipType":"REPORTING_MANAGER","since":"2026-03-24","department":null,"account":"FinServ Ltd","project":"AI in SDLC Internal","startDate":null,"endDate":null,"feedback":null},{"id":"bb79a70b-dcbb-450f-b10c-6d113531d885","from":9,"to":3,"label":"Reporting Manager","arrows":"to","relationshipType":"REPORTING_MANAGER","since":null,"department":null,"account":null,"project":null,"startDate":null,"endDate":null,"feedback":null},{"id":"7ebc2854-3174-45ac-877d-21fd5fb074c9","from":6,"to":7,"label":"Peer","arrows":"to","relationshipType":"PEER","since":null,"department":null,"account":null,"project":"ERP Modernisation","startDate":null,"endDate":null,"feedback":null},{"id":"ecccbf43-0287-4d18-8856-f487f60cd8c2","from":7,"to":4,"label":"Engagement Manager","arrows":"to","relationshipType":"ENGAGEMENT_MANAGER","since":null,"department":null,"account":null,"project":null,"startDate":null,"endDate":null,"feedback":null}]}
