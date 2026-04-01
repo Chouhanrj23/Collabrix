@@ -43,13 +43,9 @@ public class GraphService {
 
         for (ConnectionRequest conn : allConnections) {
             NodeDto fromNode = nodeMap.get(conn.getFromEmployeeId());
-            NodeDto toNode = nodeMap.get(conn.getToEmployeeId());
-            String commonProjects = computeCommonProjects(
-                    fromNode != null ? fromNode.project() : null,
-                    toNode != null ? toNode.project() : null);
             String dept = conn.getDepartment() != null ? conn.getDepartment()
                     : (fromNode != null ? fromNode.department() : null);
-            
+
             edges.add(new EdgeDto(
                     conn.getId(),
                     conn.getFromEmployeeId(),
@@ -60,7 +56,7 @@ public class GraphService {
                     conn.getCreatedAt(),
                     dept,
                     conn.getAccount(),
-                    commonProjects,
+                    conn.getProject(),
                     conn.getStartDate(),
                     conn.getEndDate(),
                     null,
@@ -154,13 +150,9 @@ public class GraphService {
         for (ConnectionRequest conn : allConns) {
             if (!seenIds.add(conn.getId())) continue;
             Employee fromEmp = employeeMap.get(conn.getFromEmployeeId());
-            Employee toEmp = employeeMap.get(conn.getToEmployeeId());
-            String commonProjects = computeCommonProjects(
-                    fromEmp != null ? fromEmp.getProject() : null,
-                    toEmp != null ? toEmp.getProject() : null);
             String dept = conn.getDepartment() != null ? conn.getDepartment()
                     : (fromEmp != null ? fromEmp.getDepartment() : null);
-            
+
             edges.add(new EdgeDto(
                     conn.getId(),
                     conn.getFromEmployeeId(),
@@ -171,7 +163,7 @@ public class GraphService {
                     conn.getCreatedAt(),
                     dept,
                     conn.getAccount(),
-                    commonProjects,
+                    conn.getProject(),
                     conn.getStartDate(),
                     conn.getEndDate(),
                     null,
@@ -179,12 +171,6 @@ public class GraphService {
         }
 
         return new GraphDto(nodes, edges);
-    }
-
-    private String computeCommonProjects(String p1, String p2) {
-        if (p1 == null || p2 == null) return null;
-        if (p1.equalsIgnoreCase(p2)) return p1;
-        return null;
     }
 
     private GraphDto buildGraph(Employee centerEmployee) {
@@ -208,13 +194,9 @@ public class GraphService {
             }
 
             NodeDto fromNodeD = nodeMap.get(conn.getFromEmployeeId());
-            NodeDto toNodeD = nodeMap.get(conn.getToEmployeeId());
-            String commonProjectsD = computeCommonProjects(
-                    fromNodeD != null ? fromNodeD.project() : null,
-                    toNodeD != null ? toNodeD.project() : null);
             String deptD = conn.getDepartment() != null ? conn.getDepartment()
                     : (fromNodeD != null ? fromNodeD.department() : null);
-            
+
             edges.add(new EdgeDto(
                     conn.getId(),
                     conn.getFromEmployeeId(),
@@ -225,7 +207,7 @@ public class GraphService {
                     conn.getCreatedAt(),
                     deptD,
                     conn.getAccount(),
-                    commonProjectsD,
+                    conn.getProject(),
                     conn.getStartDate(),
                     conn.getEndDate(),
                     null,
@@ -260,13 +242,9 @@ public class GraphService {
                 boolean edgeExists = edges.stream().anyMatch(e -> e.id().equals(conn.getId()) || e.id().equals(edgeId));
                 if (!edgeExists) {
                     NodeDto fromNodeR = nodeMap.get(conn.getFromEmployeeId());
-                    NodeDto toNodeR = nodeMap.get(conn.getToEmployeeId());
-                    String commonProjectsR = computeCommonProjects(
-                            fromNodeR != null ? fromNodeR.project() : null,
-                            toNodeR != null ? toNodeR.project() : null);
                     String deptR = conn.getDepartment() != null ? conn.getDepartment()
                             : (fromNodeR != null ? fromNodeR.department() : null);
-                    
+
                     edges.add(new EdgeDto(
                             edgeId,
                             conn.getFromEmployeeId(),
@@ -277,7 +255,7 @@ public class GraphService {
                             conn.getCreatedAt(),
                             deptR,
                             conn.getAccount(),
-                            commonProjectsR,
+                            conn.getProject(),
                             conn.getStartDate(),
                             conn.getEndDate(),
                             null,

@@ -3,12 +3,14 @@ package com.collabrix.config;
 import com.collabrix.entity.ConnectionRequest;
 import com.collabrix.entity.Employee;
 import com.collabrix.entity.FeedbackRelationship;
+import com.collabrix.entity.FeedbackRequest;
 import com.collabrix.enums.ConnectionStatus;
 import com.collabrix.enums.Designation;
 import com.collabrix.enums.RelationshipType;
 import com.collabrix.repository.ConnectionRepository;
 import com.collabrix.repository.EmployeeRepository;
 import com.collabrix.repository.FeedbackRepository;
+import com.collabrix.repository.FeedbackRequestRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.neo4j.driver.Driver;
@@ -20,6 +22,7 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Component;
 
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -34,6 +37,7 @@ public class DataSeeder implements ApplicationRunner {
     private final EmployeeRepository employeeRepository;
     private final ConnectionRepository connectionRepository;
     private final FeedbackRepository feedbackRepository;
+    private final FeedbackRequestRepository feedbackRequestRepository;
     private final PasswordEncoder passwordEncoder;
     private final Driver neo4jDriver;
 
@@ -75,8 +79,16 @@ public class DataSeeder implements ApplicationRunner {
         feedbacks.removeIf(f -> f == null);
         feedbackRepository.saveAll(feedbacks);
 
-        log.info("✅ Collabrix seed data loaded — 10 employees, {} connections, {} feedback entries",
-                connections.size(), feedbacks.size());
+        // ── 5. Pending ConnectionRequests ─────────────────────────────────────
+        List<ConnectionRequest> pending = buildPendingConnections(id);
+        connectionRepository.saveAll(pending);
+
+        // ── 6. Pending FeedbackRequests ───────────────────────────────────────
+        List<FeedbackRequest> feedbackRequests = buildFeedbackRequests(id);
+        feedbackRequestRepository.saveAll(feedbackRequests);
+
+        log.info("✅ Collabrix seed data loaded — 21 employees, {} approved + {} pending connections, {} feedback entries, {} feedback requests",
+                connections.size(), pending.size(), feedbacks.size(), feedbackRequests.size());
     }
 
     // ── Employees ─────────────────────────────────────────────────────────────
@@ -92,7 +104,18 @@ public class DataSeeder implements ApplicationRunner {
                 emp("raj",          "Raj Chouhan",              "raj@collabrix.com",             hash, Designation.CONSULTANT,"GS",     "AI in SDLC, Banking", LocalDate.of(2021,  6,  1)),
                 emp("praveen",      "Praveen Agarwal",          "praveen@collabrix.com",         hash, Designation.CONSULTANT,"Others", "AI in SDLC",          LocalDate.of(2021,  9, 15)),
                 emp("gagan",        "Gagan Yadav",              "gagan@collabrix.com",           hash, Designation.ASSOCIATE, "Others", "AI in SDLC",          LocalDate.of(2023,  8, 21)),
-                emp("ganesh.gatti", "Ganesh Gatti",             "ganesh.gatti@collabrix.com",    hash, Designation.ASSOCIATE, "GS",     "AI in SDLC, Banking", LocalDate.of(2024,  1,  1))
+                emp("ganesh.gatti", "Ganesh Gatti",             "ganesh.gatti@collabrix.com",    hash, Designation.ASSOCIATE, "GS",     "AI in SDLC, Banking", LocalDate.of(2024,  1,  1)),
+                emp("nirmal",       "Nirmal Bharadwaj",         "nirmal@collabrix.com",          hash, Designation.MANAGER,   "GS",     "Banking",             LocalDate.of(2019,  5, 10)),
+                emp("snehaa",       "Snehaa V",                 "snehaa@collabrix.com",          hash, Designation.MANAGER,   "GS",     "Banking",             LocalDate.of(2020,  3, 15)),
+                emp("meraj",        "Meraj Hassan",             "meraj@collabrix.com",           hash, Designation.MANAGER,   "GS",     "Banking",             LocalDate.of(2020,  8,  1)),
+                emp("vinayak",      "Vinayak Bandhu",           "vinayak@collabrix.com",         hash, Designation.MANAGER,   "GS",     "Banking",             LocalDate.of(2021,  1, 20)),
+                emp("vishal",       "Vishal Kumar",             "vishal@collabrix.com",          hash, Designation.CONSULTANT,"GS",     "Banking",             LocalDate.of(2024,  6,  1)),
+                emp("monica",       "Monica B",                 "monica@collabrix.com",          hash, Designation.CONSULTANT,"GS",     "Banking",             LocalDate.of(2024,  7,  1)),
+                emp("meet",         "Meet Gandhi",              "meet@collabrix.com",            hash, Designation.CONSULTANT,"GS",     "Banking",             LocalDate.of(2024,  7, 15)),
+                emp("kundan",       "Kundan Kumar",             "kundan@collabrix.com",          hash, Designation.CONSULTANT,"GS",     "Banking",             LocalDate.of(2024,  8,  1)),
+                emp("ankit",        "Ankit Kumar",              "ankit@collabrix.com",           hash, Designation.ASSOCIATE, "GS",     "Banking",             LocalDate.of(2025,  1,  6)),
+                emp("yashraj",      "Yashraj Mandloi",          "yashraj@collabrix.com",         hash, Designation.ASSOCIATE, "GS",     "Banking",             LocalDate.of(2025,  1, 13)),
+                emp("prajyot",      "Prajyot Patil",            "prajyot@collabrix.com",         hash, Designation.ASSOCIATE, "GS",     "Banking",             LocalDate.of(2025,  2,  3))
         );
     }
 
@@ -130,17 +153,32 @@ public class DataSeeder implements ApplicationRunner {
         long praveen = id.get("praveen");
         long gagan   = id.get("gagan");
         long ganesh  = id.get("ganesh.gatti");
+        long nirmal  = id.get("nirmal");
+        long snehaa  = id.get("snehaa");
+        long meraj   = id.get("meraj");
+        long vinayak = id.get("vinayak");
+        long vishal  = id.get("vishal");
+        long monica  = id.get("monica");
+        long meet    = id.get("meet");
+        long kundan  = id.get("kundan");
+        long ankit   = id.get("ankit");
+        long yashraj = id.get("yashraj");
+        long prajyot = id.get("prajyot");
 
         return List.of(
                 // Reporting-Partner links (senior ↔ PARTNER/DIRECTOR)
-                conn(sankara, dilip,   RelationshipType.REPORTING_PARTNER,  "GS",     "Internal",            STD_START, null, STD_CREATED, STD_RESOLVED),
-                conn(malli,   dilip,   RelationshipType.REPORTING_PARTNER,  "Others", "Internal",            STD_START, null, STD_CREATED, STD_RESOLVED),
+                conn(dilip,   sankara, RelationshipType.REPORTING_PARTNER,  "GS",     "Internal",            STD_START, null, STD_CREATED, STD_RESOLVED),
+                conn(dilip,   malli,   RelationshipType.REPORTING_PARTNER,  "Others", "Internal",            STD_START, null, STD_CREATED, STD_RESOLVED),
 
                 // Engagement-Partner
-                conn(sankara, dilip,   RelationshipType.ENGAGEMENT_PARTNER, "GS",     "Internal",            STD_START, null, STD_CREATED, STD_RESOLVED),
+                conn(dilip,   sankara, RelationshipType.ENGAGEMENT_PARTNER, "GS",     "Internal",            STD_START, null, STD_CREATED, STD_RESOLVED),
 
-                // Manager links
-                conn(kratika, sankara, RelationshipType.REPORTING_MANAGER,  "GS",     "Internal",            STD_START, null, STD_CREATED, STD_RESOLVED),
+                // Kratika Sharma senior links
+                conn(kratika, sankara, RelationshipType.REPORTING_PARTNER,  "GS",     "Internal",            STD_START, null, STD_CREATED, STD_RESOLVED),
+                conn(kratika, dilip,   RelationshipType.REPORTING_MANAGER,  "GS",     "Internal",            STD_START, null, STD_CREATED, STD_RESOLVED),
+                conn(kratika, malli,   RelationshipType.ENGAGEMENT_PARTNER, "GS",     "Internal",            STD_START, null, STD_CREATED, STD_RESOLVED),
+
+                // Other manager links
                 conn(karthik, malli,   RelationshipType.REPORTING_MANAGER,  "GS",     "Internal",            STD_START, null, STD_CREATED, STD_RESOLVED),
                 conn(hiren,   sankara, RelationshipType.ENGAGEMENT_MANAGER, "Others", "Internal",            STD_START, null, STD_CREATED, STD_RESOLVED),
 
@@ -154,7 +192,30 @@ public class DataSeeder implements ApplicationRunner {
                 // Associate links
                 conn(gagan,   kratika, RelationshipType.REPORTING_MANAGER,  "Others", "AI in SDLC",          STD_START, null, STD_CREATED, STD_RESOLVED),
                 conn(ganesh,  kratika, RelationshipType.REPORTING_MANAGER,  "GS",     "AI in SDLC, Banking", STD_START, null, STD_CREATED, STD_RESOLVED),
-                conn(ganesh,  hiren,   RelationshipType.ENGAGEMENT_MANAGER, "GS",     "AI in SDLC, Banking", STD_START, null, STD_CREATED, STD_RESOLVED)
+                conn(ganesh,  hiren,   RelationshipType.ENGAGEMENT_MANAGER, "GS",     "AI in SDLC, Banking", STD_START, null, STD_CREATED, STD_RESOLVED),
+
+                // Nirmal, Snehaa, Meraj, Vinayak — PEER to Kratika, senior links
+                conn(nirmal,  kratika, RelationshipType.PEER,               "GS",     "Banking",             "2021-06-01", null, "2021-06-01T09:00:00", "2021-06-05T09:00:00"),
+                conn(snehaa,  kratika, RelationshipType.PEER,               "GS",     "Banking",             "2021-06-01", null, "2021-06-01T09:00:00", "2021-06-05T09:00:00"),
+                conn(meraj,   kratika, RelationshipType.PEER,               "GS",     "Banking",             "2021-06-01", null, "2021-06-01T09:00:00", "2021-06-05T09:00:00"),
+                conn(vinayak, kratika, RelationshipType.PEER,               "GS",     "Banking",             "2021-06-01", null, "2021-06-01T09:00:00", "2021-06-05T09:00:00"),
+                conn(nirmal,  sankara, RelationshipType.REPORTING_MANAGER,  "GS",     "Banking",             STD_START, null, STD_CREATED, STD_RESOLVED),
+                conn(snehaa,  sankara, RelationshipType.REPORTING_MANAGER,  "GS",     "Banking",             STD_START, null, STD_CREATED, STD_RESOLVED),
+                conn(meraj,   sankara, RelationshipType.REPORTING_MANAGER,  "GS",     "Banking",             STD_START, null, STD_CREATED, STD_RESOLVED),
+                conn(vinayak, sankara, RelationshipType.REPORTING_MANAGER,  "GS",     "Banking",             STD_START, null, STD_CREATED, STD_RESOLVED),
+
+                // Vishal Kumar links
+                conn(vishal,  kratika, RelationshipType.REPORTING_MANAGER,  "GS",     "Banking",             "2024-06-15", null, "2024-06-15T09:00:00", "2024-06-20T09:00:00"),
+
+                // Monica B, Meet Gandhi, Kundan Kumar — Consultant → Kratika
+                conn(monica,  kratika, RelationshipType.REPORTING_MANAGER,  "GS",     "Banking",             "2024-07-10", null, "2024-07-10T09:00:00", "2024-07-15T09:00:00"),
+                conn(meet,    kratika, RelationshipType.REPORTING_MANAGER,  "GS",     "Banking",             "2024-07-25", null, "2024-07-25T09:00:00", "2024-07-30T09:00:00"),
+                conn(kundan,  kratika, RelationshipType.REPORTING_MANAGER,  "GS",     "Banking",             "2024-08-10", null, "2024-08-10T09:00:00", "2024-08-15T09:00:00"),
+
+                // Ankit Kumar, Yashraj Mandloi, Prajyot Patil — Associate → Kratika
+                conn(ankit,   kratika, RelationshipType.REPORTING_MANAGER,  "GS",     "Banking",             "2025-01-10", null, "2025-01-10T09:00:00", "2025-01-15T09:00:00"),
+                conn(yashraj, kratika, RelationshipType.REPORTING_MANAGER,  "GS",     "Banking",             "2025-01-17", null, "2025-01-17T09:00:00", "2025-01-22T09:00:00"),
+                conn(prajyot, kratika, RelationshipType.REPORTING_MANAGER,  "GS",     "Banking",             "2025-02-07", null, "2025-02-07T09:00:00", "2025-02-12T09:00:00")
         );
     }
 
@@ -176,6 +237,83 @@ public class DataSeeder implements ApplicationRunner {
 
     private List<FeedbackRelationship> buildFeedbacks(Map<String, Long> id) {
         List<FeedbackRelationship> list = new ArrayList<>();
+
+        // ── Nirmal Bharadwaj ──────────────────────────────────────────────────
+        list.add(fb(id, "dilip",    "nirmal",  5, "Strong manager with excellent Banking domain expertise.",        "2022-03-10", false));
+        list.add(fb(id, "sankara",  "nirmal",  4, "Reliable delivery and good stakeholder management.",             "2022-07-15", false));
+        list.add(fb(id, "kratika",  "nirmal",  4, "Great peer collaboration on Banking initiatives.",               "2023-01-20", false));
+        list.add(fb(id, "malli",    "nirmal",  5, "Exceptional leadership on the GS Banking account.",              "2023-06-05", false));
+        list.add(fb(id, "dilip",    "nirmal",  5, "Consistently exceeds expectations on delivery.",                 "2024-02-18", true));
+
+        // ── Snehaa V ──────────────────────────────────────────────────────────
+        list.add(fb(id, "dilip",    "snehaa",  4, "Strong analytical skills, excellent Banking project delivery.",  "2022-04-12", false));
+        list.add(fb(id, "sankara",  "snehaa",  5, "Outstanding client engagement and communication.",               "2022-09-20", false));
+        list.add(fb(id, "kratika",  "snehaa",  4, "Collaborative peer, always willing to share knowledge.",         "2023-02-14", false));
+        list.add(fb(id, "malli",    "snehaa",  4, "Solid performance across Banking deliverables.",                 "2023-08-10", false));
+        list.add(fb(id, "dilip",    "snehaa",  5, "Impressive growth and leadership this year.",                    "2024-03-22", true));
+
+        // ── Meraj Hassan ──────────────────────────────────────────────────────
+        list.add(fb(id, "dilip",    "meraj",   4, "Good technical depth and consistent Banking delivery.",          "2022-05-18", false));
+        list.add(fb(id, "sankara",  "meraj",   4, "Reliable manager with strong team coordination skills.",         "2022-11-08", false));
+        list.add(fb(id, "kratika",  "meraj",   5, "Excellent peer support and cross-team collaboration.",           "2023-03-25", false));
+        list.add(fb(id, "malli",    "meraj",   4, "Strong contributor to Banking account growth.",                  "2023-09-14", false));
+        list.add(fb(id, "dilip",    "meraj",   4, "Dependable and consistent performer on GS account.",             "2024-04-10", true));
+
+        // ── Vinayak Bandhu ────────────────────────────────────────────────────
+        list.add(fb(id, "dilip",    "vinayak", 4, "Good leadership on Banking project, strong delivery focus.",     "2022-06-22", false));
+        list.add(fb(id, "sankara",  "vinayak", 5, "Exceptional stakeholder management and communication skills.",   "2022-12-15", false));
+        list.add(fb(id, "kratika",  "vinayak", 4, "Great peer, always collaborative and supportive.",               "2023-04-18", false));
+        list.add(fb(id, "malli",    "vinayak", 4, "Consistent performance, strong ownership of GS account tasks.",  "2023-10-02", false));
+        list.add(fb(id, "dilip",    "vinayak", 5, "Outstanding contribution to Banking account in Q1.",             "2024-05-08", true));
+
+        // ── Monica B ──────────────────────────────────────────────────────────
+        list.add(fb(id, "kratika",  "monica",  4, "Strong delivery on Banking tasks, good communication skills.",  "2024-08-20", false));
+        list.add(fb(id, "dilip",    "monica",  4, "Quickly grasped project context and delivered consistently.",   "2024-09-10", false));
+        list.add(fb(id, "raj",      "monica",  4, "Collaborative team member, great attention to detail.",         "2024-10-05", false));
+        list.add(fb(id, "sankara",  "monica",  5, "Exceptional contribution to the Banking module in Q3.",         "2024-11-15", true));
+        list.add(fb(id, "kratika",  "monica",  4, "Consistent performance, reliable on deliverables.",             "2025-01-20", false));
+
+        // ── Meet Gandhi ───────────────────────────────────────────────────────
+        list.add(fb(id, "kratika",  "meet",    4, "Good analytical thinking and proactive problem solving.",       "2024-09-01", false));
+        list.add(fb(id, "dilip",    "meet",    3, "Needs to improve documentation and status communication.",      "2024-10-12", false));
+        list.add(fb(id, "raj",      "meet",    4, "Solid technical skills, integrates well with the team.",        "2024-11-08", false));
+        list.add(fb(id, "sankara",  "meet",    4, "Good progress on Banking deliverables.",                        "2025-01-14", false));
+        list.add(fb(id, "kratika",  "meet",    5, "Outstanding performance in year-end sprint.",                   "2025-02-10", true));
+
+        // ── Kundan Kumar ──────────────────────────────────────────────────────
+        list.add(fb(id, "kratika",  "kundan",  3, "Getting up to speed, needs more initiative on complex tasks.",  "2024-09-20", false));
+        list.add(fb(id, "dilip",    "kundan",  4, "Shows potential, good attitude towards feedback.",              "2024-10-30", false));
+        list.add(fb(id, "raj",      "kundan",  4, "Dependable on assigned tasks, good team player.",               "2024-12-05", false));
+        list.add(fb(id, "sankara",  "kundan",  4, "Improved significantly over the last quarter.",                 "2025-01-25", false));
+        list.add(fb(id, "kratika",  "kundan",  5, "Excellent Banking module delivery in Q4.",                      "2025-02-20", true));
+
+        // ── Ankit Kumar ───────────────────────────────────────────────────────
+        list.add(fb(id, "kratika",  "ankit",   4, "Strong start, picks up tasks quickly for a fresher.",          "2025-02-01", false));
+        list.add(fb(id, "vishal",   "ankit",   3, "Needs more confidence in technical discussions.",               "2025-02-15", false));
+        list.add(fb(id, "raj",      "ankit",   4, "Good learner, eager to contribute to the Banking project.",     "2025-02-28", false));
+        list.add(fb(id, "monica",   "ankit",   4, "Collaborative and responsive to guidance.",                     "2025-03-10", false));
+        list.add(fb(id, "kratika",  "ankit",   4, "Solid Q1 performance for a new associate.",                     "2025-03-20", true));
+
+        // ── Yashraj Mandloi ───────────────────────────────────────────────────
+        list.add(fb(id, "kratika",  "yashraj", 4, "Great attitude and willingness to learn.",                      "2025-02-05", false));
+        list.add(fb(id, "vishal",   "yashraj", 4, "Good technical fundamentals, quick to deliver small tasks.",    "2025-02-18", false));
+        list.add(fb(id, "meet",     "yashraj", 3, "Should communicate progress more proactively.",                 "2025-03-01", false));
+        list.add(fb(id, "monica",   "yashraj", 4, "Team player, supports colleagues well.",                        "2025-03-12", false));
+        list.add(fb(id, "kratika",  "yashraj", 5, "Impressive ramp-up, exceeded expectations in first quarter.",   "2025-03-25", true));
+
+        // ── Prajyot Patil ─────────────────────────────────────────────────────
+        list.add(fb(id, "kratika",  "prajyot", 3, "Early days — needs to be more proactive on task ownership.",    "2025-03-01", false));
+        list.add(fb(id, "vishal",   "prajyot", 4, "Good foundational skills, integrates well with the team.",      "2025-03-10", false));
+        list.add(fb(id, "meet",     "prajyot", 4, "Positive attitude and quick to adapt to project processes.",    "2025-03-18", false));
+        list.add(fb(id, "kundan",   "prajyot", 4, "Collaborative and eager to learn from seniors.",                "2025-03-22", false));
+        list.add(fb(id, "kratika",  "prajyot", 4, "Promising start, keep up the momentum.",                        "2025-03-28", true));
+
+        // ── Vishal Kumar ──────────────────────────────────────────────────────
+        list.add(fb(id, "kratika",  "vishal", 4, "Good start on the Banking project, shows strong fundamentals.",  "2024-07-15", false));
+        list.add(fb(id, "dilip",    "vishal", 4, "Promising consultant, adapts quickly to project needs.",         "2024-08-10", false));
+        list.add(fb(id, "raj",      "vishal", 3, "Needs to take more ownership and communicate blockers early.",   "2024-09-05", false));
+        list.add(fb(id, "kratika",  "vishal", 5, "Excellent delivery on Banking module in Q3.",                    "2024-10-20", true));
+        list.add(fb(id, "sankara",  "vishal", 4, "Good team player, contributes well to GS account goals.",        "2025-01-08", false));
 
         // ── Ganesh Gatti ──────────────────────────────────────────────────────
         list.add(fb(id, "kratika",  "ganesh.gatti", 4, "Good progress on AI in SDLC tasks. Keep it up.",        "2024-02-10", false));
@@ -265,6 +403,85 @@ public class DataSeeder implements ApplicationRunner {
                 .rating(rating).comment(comment)
                 .feedbackDate(LocalDate.parse(dateStr))
                 .isResponse(isResponse)
+                .build();
+    }
+
+    // ── Pending ConnectionRequests ────────────────────────────────────────────
+
+    private List<ConnectionRequest> buildPendingConnections(Map<String, Long> id) {
+        long dilip   = id.get("dilip");
+        long sankara = id.get("sankara");
+        long malli   = id.get("malli");
+        long kratika = id.get("kratika");
+        long karthik = id.get("karthik");
+        long monica  = id.get("monica");
+        long meet    = id.get("meet");
+        long kundan  = id.get("kundan");
+        long ankit   = id.get("ankit");
+        long yashraj = id.get("yashraj");
+        long prajyot = id.get("prajyot");
+        long vishal  = id.get("vishal");
+
+        return List.of(
+                pendingConn(monica,  dilip,   RelationshipType.REPORTING_PARTNER,  "GS",     "Banking",             "2026-01-10", null, "2026-01-10T10:00:00"),
+                pendingConn(meet,    sankara, RelationshipType.REPORTING_PARTNER,  "GS",     "Banking",             "2026-01-20", null, "2026-01-20T11:00:00"),
+                pendingConn(kundan,  malli,   RelationshipType.ENGAGEMENT_PARTNER, "GS",     "Banking",             "2026-02-03", null, "2026-02-03T09:30:00"),
+                pendingConn(vishal,  kratika, RelationshipType.ENGAGEMENT_MANAGER, "GS",     "Banking",             "2026-02-14", null, "2026-02-14T14:00:00"),
+                pendingConn(ankit,   karthik, RelationshipType.ENGAGEMENT_MANAGER, "GS",     "Banking",             "2026-03-01", null, "2026-03-01T09:00:00"),
+                pendingConn(yashraj, kratika, RelationshipType.PEER,               "GS",     "Banking",             "2026-03-10", null, "2026-03-10T10:00:00"),
+                pendingConn(prajyot, kratika, RelationshipType.ENGAGEMENT_MANAGER, "GS",     "Banking",             "2026-03-20", null, "2026-03-20T11:00:00")
+        );
+    }
+
+    private ConnectionRequest pendingConn(long fromId, long toId, RelationshipType type,
+                                          String account, String project,
+                                          String startDate, String endDate,
+                                          String createdAt) {
+        return ConnectionRequest.builder()
+                .fromEmployeeId(fromId).toEmployeeId(toId)
+                .relationshipType(type)
+                .status(ConnectionStatus.PENDING)
+                .department(DEPT).account(account).project(project)
+                .startDate(startDate).endDate(endDate)
+                .createdAt(createdAt)
+                .build();
+    }
+
+    // ── Pending FeedbackRequests ──────────────────────────────────────────────
+
+    private List<FeedbackRequest> buildFeedbackRequests(Map<String, Long> id) {
+        long dilip   = id.get("dilip");
+        long sankara = id.get("sankara");
+        long kratika = id.get("kratika");
+        long karthik = id.get("karthik");
+        long raj     = id.get("raj");
+        long vishal  = id.get("vishal");
+        long monica  = id.get("monica");
+        long meet    = id.get("meet");
+        long kundan  = id.get("kundan");
+        long ankit   = id.get("ankit");
+        long yashraj = id.get("yashraj");
+        long prajyot = id.get("prajyot");
+
+        return List.of(
+                feedbackReq(vishal,  dilip,   "Please share feedback on my performance in the Banking project.",        LocalDateTime.of(2026, 1, 12, 9, 0)),
+                feedbackReq(monica,  dilip,   "Would appreciate your feedback on my recent Banking deliverables.",      LocalDateTime.of(2026, 1, 22, 10, 30)),
+                feedbackReq(meet,    sankara, "Requesting feedback on my work in the Banking module this quarter.",     LocalDateTime.of(2026, 2, 5, 11, 0)),
+                feedbackReq(kundan,  kratika, "Please evaluate my performance and areas of improvement.",               LocalDateTime.of(2026, 2, 18, 14, 0)),
+                feedbackReq(ankit,   karthik, "Feedback requested for my Q1 performance review.",                      LocalDateTime.of(2026, 3, 5, 9, 0)),
+                feedbackReq(yashraj, raj,     "Please share feedback on my contributions to the Banking project.",     LocalDateTime.of(2026, 3, 12, 10, 0)),
+                feedbackReq(prajyot, kratika, "Requesting feedback on my onboarding and initial deliverables.",        LocalDateTime.of(2026, 3, 22, 9, 30))
+        );
+    }
+
+    private FeedbackRequest feedbackReq(long requestedById, long requestedFromId,
+                                        String message, LocalDateTime requestedAt) {
+        return FeedbackRequest.builder()
+                .requestedByEmployeeId(requestedById)
+                .requestedFromEmployeeId(requestedFromId)
+                .message(message)
+                .fulfilled(false)
+                .requestedAt(requestedAt)
                 .build();
     }
 }

@@ -65,16 +65,22 @@ function computeRadialPositions(filteredGraphData, currentUserId) {
   const { directIds, indirectIds } = filteredGraphData
   const pos = {}
 
+  // Random rotation so the layout looks different on every render / refresh
+  const rotationOffset = Math.random() * 2 * Math.PI
+
   // Center node
   pos[selfId] = { x: 0, y: 0 }
 
-  // ── Direct ring — evenly spaced, starting at top (−π/2) ──────────────────
+  // ── Direct ring — evenly spaced with a random starting angle ─────────────
   const directList = [...directIds]
   directList.forEach((id, i) => {
-    const angle = (2 * Math.PI * i) / directList.length - Math.PI / 2
+    const baseAngle = (2 * Math.PI * i) / directList.length + rotationOffset
+    const jitter = (Math.random() - 0.5) * 0.4   // ±~11° angular jitter
+    const radiusJitter = 1 + (Math.random() - 0.5) * 0.15  // ±7.5% radius jitter
+    const angle = baseAngle + jitter
     pos[id] = {
-      x: RADIUS_DIRECT * Math.cos(angle),
-      y: RADIUS_DIRECT * Math.sin(angle),
+      x: RADIUS_DIRECT * radiusJitter * Math.cos(angle),
+      y: RADIUS_DIRECT * radiusJitter * Math.sin(angle),
     }
   })
 
@@ -113,10 +119,12 @@ function computeRadialPositions(filteredGraphData, currentUserId) {
       const offset = children.length > 1
         ? -spread / 2 + i * (spread / (children.length - 1))
         : 0
-      const angle = baseAngle + offset
+      const jitter = (Math.random() - 0.5) * 0.3
+      const radiusJitter = 1 + (Math.random() - 0.5) * 0.18
+      const angle = baseAngle + offset + jitter
       pos[id] = {
-        x: RADIUS_INDIRECT * Math.cos(angle),
-        y: RADIUS_INDIRECT * Math.sin(angle),
+        x: RADIUS_INDIRECT * radiusJitter * Math.cos(angle),
+        y: RADIUS_INDIRECT * radiusJitter * Math.sin(angle),
       }
     })
   })
@@ -165,7 +173,7 @@ const GRAPH_OPTIONS = {
     },
     width: 1.5,
     selectionWidth: 2.5,
-    smooth: { type: 'continuous', roundness: 0.5 },
+    smooth: { enabled: true, type: 'dynamic' },
     chosen: {
       edge: (values) => {
         values.width = 3
@@ -180,9 +188,10 @@ const GRAPH_OPTIONS = {
   interaction: {
     hover: true,
     tooltipDelay: 200,
-    zoomView: false,
+    zoomView: true,
+    zoomSpeed: 0.8,
     dragView: true,
-    dragNodes: false,
+    dragNodes: true,
     multiselect: false,
     navigationButtons: false,
     keyboard: { enabled: false, bindToWindow: false },
@@ -261,6 +270,18 @@ export default function CollaborationGraph({ graphData, loading, currentUserId, 
     document.addEventListener('fullscreenchange', handleFullscreenChange)
     return () => document.removeEventListener('fullscreenchange', handleFullscreenChange)
   }, [])
+
+  // ── Layout randomization key — increment to force a new random layout ──
+  const [layoutKey, setLayoutKey] = useState(0)
+
+  // ── Filter state ───────────────────────────────────────────────────────
+  const [showFilterPanel, setShowFilterPanel] = useState(false)
+  const [activeFilters, setActiveFilters] = useState({
+    relationshipTypes: new Set(),
+    departments: new Set(),
+    accounts: new Set(),
+    projects: new Set(),
+  })
 
   // ── Focus mode state ───────────────────────────────────────────────────
   const [focusedNodeId, setFocusedNodeId] = useState(null)
@@ -390,15 +411,118 @@ export default function CollaborationGraph({ graphData, loading, currentUserId, 
 
   }, [graphData, currentUserId, currentUserDesignation, isDirectOnly])
 
+  // ── Available filter options (derived from hierarchy-filtered data) ────
+  const availableOptions = useMemo(() => {
+    const relTypes = new Set()
+    const departments = new Set()
+    const accounts = new Set()
+    const projects = new Set()
+    filteredGraphData.edges.forEach(e => {
+      if (e.relationshipType) relTypes.add(e.relationshipType)
+      if (e.account) accounts.add(e.account)
+      if (e.project) {
+        e.project.split(',').map(p => p.trim()).filter(Boolean).forEach(p => projects.add(p))
+      }
+    })
+    filteredGraphData.nodes.forEach(n => {
+      if (n.department) departments.add(n.department)
+    })
+    return {
+      relTypes: [...relTypes].sort(),
+      departments: [...departments].sort(),
+      accounts: [...accounts].sort(),
+      projects: [...projects].sort(),
+    }
+  }, [filteredGraphData])
+
+  // ── Apply active filters on top of hierarchy-filtered data ────────────
+  const filterAppliedGraphData = useMemo(() => {
+    const hasRelFilter  = activeFilters.relationshipTypes.size > 0
+    const hasDeptFilter = activeFilters.departments.size > 0
+    const hasAccFilter  = activeFilters.accounts.size > 0
+    const hasProjFilter = activeFilters.projects.size > 0
+    if (!hasRelFilter && !hasDeptFilter && !hasAccFilter && !hasProjFilter) return filteredGraphData
+
+    const selfId = String(currentUserId)
+
+    let edges = filteredGraphData.edges
+
+    if (hasRelFilter) {
+      edges = edges.filter(e => activeFilters.relationshipTypes.has(e.relationshipType))
+    }
+    if (hasAccFilter) {
+      edges = edges.filter(e => e.account && activeFilters.accounts.has(e.account))
+    }
+    if (hasProjFilter) {
+      edges = edges.filter(e => {
+        if (!e.project) return false
+        return [...activeFilters.projects].some(p => e.project.includes(p))
+      })
+    }
+
+    // Nodes visible after edge filtering
+    const visibleNodeIds = new Set([selfId])
+    edges.forEach(e => {
+      visibleNodeIds.add(String(e.from))
+      visibleNodeIds.add(String(e.to))
+    })
+
+    let nodes = filteredGraphData.nodes.filter(n => {
+      if (String(n.id) === selfId) return true
+      if (!visibleNodeIds.has(String(n.id))) return false
+      if (hasDeptFilter) return activeFilters.departments.has(n.department)
+      return true
+    })
+
+    // Re-filter edges if department removed some nodes
+    if (hasDeptFilter) {
+      const nodeIdSet = new Set(nodes.map(n => String(n.id)))
+      edges = edges.filter(e => nodeIdSet.has(String(e.from)) && nodeIdSet.has(String(e.to)))
+    }
+
+    // Rebuild directIds / indirectIds
+    const directIds = new Set()
+    edges.forEach(e => {
+      if (String(e.from) === selfId) directIds.add(String(e.to))
+      if (String(e.to) === selfId) directIds.add(String(e.from))
+    })
+    const indirectIds = new Set()
+    nodes.forEach(n => {
+      const id = String(n.id)
+      if (id !== selfId && !directIds.has(id)) indirectIds.add(id)
+    })
+
+    return { nodes, edges, directIds, indirectIds, nodeMap: filteredGraphData.nodeMap }
+  }, [filteredGraphData, activeFilters, currentUserId])
+
+  // ── Helpers for toggling individual filter values ─────────────────────
+  function toggleFilter(category, value) {
+    setActiveFilters(prev => {
+      const next = new Set(prev[category])
+      if (next.has(value)) next.delete(value)
+      else next.add(value)
+      return { ...prev, [category]: next }
+    })
+  }
+
+  function clearAllFilters() {
+    setActiveFilters({ relationshipTypes: new Set(), departments: new Set(), accounts: new Set(), projects: new Set() })
+  }
+
+  const activeFilterCount =
+    activeFilters.relationshipTypes.size +
+    activeFilters.departments.size +
+    activeFilters.accounts.size +
+    activeFilters.projects.size
 
   // ── Memoized node transformations (with hierarchy level) ───────────────
   const visNodeItems = useMemo(() => {
-    if (!filteredGraphData.nodes.length) return []
-    return filteredGraphData.nodes.map((n) => {
+    if (!filterAppliedGraphData.nodes.length) return []
+    return filterAppliedGraphData.nodes.map((n) => {
       const colors = DESIGNATION_COLORS[n.designation] ?? { bg: '#64748B', border: '#475569' }
       const isCenter = String(n.id) === String(currentUserId)
-      const isDirect = filteredGraphData.directIds.has(String(n.id))
-      const isIndirect = filteredGraphData.indirectIds.has(String(n.id))
+      const isDirect = filterAppliedGraphData.directIds.has(String(n.id))
+      const isIndirect = filterAppliedGraphData.indirectIds.has(String(n.id))
       const hasImage = !!n.profileImageUrl
 
       const fullName = n.label ?? n.name
@@ -458,11 +582,11 @@ export default function CollaborationGraph({ graphData, loading, currentUserId, 
 
       return nodeBase
     })
-  }, [filteredGraphData, currentUserId])
+  }, [filterAppliedGraphData, currentUserId])
 
   // ── Memoized edge transformations (labels hidden, hover shows tooltip) ─
   const visEdgeItems = useMemo(() => {
-    if (!filteredGraphData.edges.length) return []
+    if (!filterAppliedGraphData.edges.length) return []
 
     const hierarchy = {
       PARTNER: 1,
@@ -474,14 +598,14 @@ export default function CollaborationGraph({ graphData, loading, currentUserId, 
       ASSOCIATE_CONSULTANT: 6
     }
 
-    return filteredGraphData.edges.map((edge, i) => {
+    return filterAppliedGraphData.edges.map((edge, i) => {
       const edgeColor = RELATIONSHIP_EDGE_COLORS[edge.relationshipType] ?? '#CBD5E1'
 
       const isDirectEdge = edge.from === currentUserId || edge.to === currentUserId
       const opacity = isDirectEdge ? 'C0' : '60' // 75% for direct, 38% for indirect
 
-      const sourceNode = filteredGraphData.nodeMap[edge.from]
-      const targetNode = filteredGraphData.nodeMap[edge.to]
+      const sourceNode = filterAppliedGraphData.nodeMap[edge.from]
+      const targetNode = filterAppliedGraphData.nodeMap[edge.to]
 
       let from = edge.from
       let to = edge.to
@@ -518,6 +642,10 @@ export default function CollaborationGraph({ graphData, loading, currentUserId, 
         edgeArrows = { to: { enabled: true } }
       }
 
+      const curveTypes = ['curvedCW', 'curvedCCW', 'continuous', 'curvedCW', 'curvedCCW']
+      const smoothType = curveTypes[Math.floor(Math.random() * curveTypes.length)]
+      const roundness  = 0.2 + Math.random() * 0.5   // 0.2 – 0.7
+
       return {
         id: edge.id ?? i,
         from,
@@ -532,6 +660,7 @@ export default function CollaborationGraph({ graphData, loading, currentUserId, 
         width: isDirectEdge ? 2 : 1,
         arrows: edgeArrows,
         dashes: edge.relationshipType === 'PEER',
+        smooth: { enabled: true, type: smoothType, roundness },
         relationshipType: edge.relationshipType,
         department: edge.department,
         account: edge.account,
@@ -541,7 +670,7 @@ export default function CollaborationGraph({ graphData, loading, currentUserId, 
         _raw: edge,
       }
     })
-  }, [filteredGraphData, currentUserId])
+  }, [filterAppliedGraphData, currentUserId, layoutKey])
 
   // ── Search results ─────────────────────────────────────────────────────
   const searchResults = useMemo(() => {
@@ -593,12 +722,12 @@ export default function CollaborationGraph({ graphData, loading, currentUserId, 
 
     // Assign radial positions: center node → direct ring → indirect ring
     const posMap = currentUserId != null
-      ? computeRadialPositions(filteredGraphData, currentUserId)
+      ? computeRadialPositions(filterAppliedGraphData, currentUserId)
       : {}
 
     const positionedNodes = visNodeItems.map(n => {
       const p = posMap[String(n.id)]
-      return p ? { ...n, x: p.x, y: p.y, fixed: { x: true, y: true } } : n
+      return p ? { ...n, x: p.x, y: p.y } : n
     })
 
     const nodes = new DataSet(positionedNodes)
@@ -714,7 +843,7 @@ export default function CollaborationGraph({ graphData, loading, currentUserId, 
       network.off('afterDrawing')
       window.removeEventListener('resize', handleResize)
     }
-  }, [visNodeItems, visEdgeItems, filteredGraphData, currentUserId, loading])
+  }, [visNodeItems, visEdgeItems, filterAppliedGraphData, currentUserId, loading, layoutKey])
 
   // ── Destroy on unmount ─────────────────────────────────────────────────
   useEffect(() => {
@@ -725,20 +854,29 @@ export default function CollaborationGraph({ graphData, loading, currentUserId, 
     }
   }, [])
 
-  // ── Reset view ─────────────────────────────────────────────────────────
+  // ── Zoom controls ──────────────────────────────────────────────────────
+  function handleZoomIn() {
+    const network = networkRef.current
+    if (!network) return
+    const scale = network.getScale()
+    network.moveTo({ scale: scale * 1.3, animation: { duration: 200, easingFunction: 'easeInOutQuad' } })
+  }
+
+  function handleZoomOut() {
+    const network = networkRef.current
+    if (!network) return
+    const scale = network.getScale()
+    network.moveTo({ scale: scale * 0.75, animation: { duration: 200, easingFunction: 'easeInOutQuad' } })
+  }
+
+  function handleFitView() {
+    networkRef.current?.fit({ animation: { duration: 300, easingFunction: 'easeInOutQuad' } })
+  }
+
+  // ── Reset view + randomize layout ─────────────────────────────────────
   function handleReset() {
-    const nodesDS = nodesDataSetRef.current
-    const edgesDS = edgesDataSetRef.current
-    if (!nodesDS || !edgesDS) return
-
-    nodesDS.update(visNodeItems.map((n) => ({
-      id: n.id, color: n.color, opacity: 1, shadow: n.shadow,
-      ...(n.shape ? { shape: n.shape, image: n.image, brokenImage: n.brokenImage } : {}),
-    })))
-    edgesDS.update(visEdgeItems.map((e) => ({ id: e.id, color: e.color, width: 1.5 })))
-
     setFocusedNodeId(null)
-    networkRef.current?.fit({ animation: { duration: 400, easingFunction: 'easeInOutQuad' } })
+    setLayoutKey((k) => k + 1)
   }
 
   // ── Search: focus + amber flash ────────────────────────────────────────
@@ -915,6 +1053,12 @@ export default function CollaborationGraph({ graphData, loading, currentUserId, 
 
         {/* Toolbar controls */}
         <div className="flex items-center gap-1 flex-shrink-0 ml-3">
+          <ToolbarButton onClick={handleZoomIn} title="Zoom in"><IconZoomIn /></ToolbarButton>
+          <ToolbarButton onClick={handleZoomOut} title="Zoom out"><IconZoomOut /></ToolbarButton>
+          <ToolbarButton onClick={handleFitView} title="Fit all nodes in view"><IconFitView /></ToolbarButton>
+
+          <div className="w-px h-4 bg-gray-200 mx-0.5 flex-shrink-0" />
+
           <ToolbarButton onClick={toggleFullscreen} title={isFullscreen ? "Exit fullscreen" : "Fullscreen"}><IconExpand /></ToolbarButton>
 
           <div className="w-px h-4 bg-gray-200 mx-0.5 flex-shrink-0" />
@@ -926,6 +1070,22 @@ export default function CollaborationGraph({ graphData, loading, currentUserId, 
           >
             <IconLegend />
           </ToolbarButton>
+
+          {/* Filter button with active-count badge */}
+          <div className="relative">
+            <ToolbarButton
+              onClick={() => setShowFilterPanel((v) => !v)}
+              title="Filter graph"
+              active={showFilterPanel || activeFilterCount > 0}
+            >
+              <IconFilter />
+            </ToolbarButton>
+            {activeFilterCount > 0 && (
+              <span className="absolute -top-1 -right-1 w-3.5 h-3.5 rounded-full bg-red-500 text-white text-[8px] font-bold flex items-center justify-center pointer-events-none">
+                {activeFilterCount}
+              </span>
+            )}
+          </div>
 
           <ToolbarButton
             onClick={handleReset}
@@ -948,6 +1108,202 @@ export default function CollaborationGraph({ graphData, loading, currentUserId, 
               {RELATIONSHIP_TYPE_DISPLAY[type] ?? type.replace(/_/g, ' ')}
             </span>
           ))}
+        </div>
+      )}
+
+      {/* ── Filter panel ── */}
+      {showFilterPanel && (
+        <div className="border-b border-gray-100 bg-white flex-shrink-0 shadow-sm">
+          <div className="px-4 py-3 flex items-start gap-6 flex-wrap">
+
+            {/* Relationship Type */}
+            {availableOptions.relTypes.length > 0 && (
+              <div className="min-w-[160px]">
+                <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-wider mb-2">Relationship Type</p>
+                <div className="flex flex-col gap-1.5">
+                  {availableOptions.relTypes.map(type => (
+                    <label key={type} className="flex items-center gap-2 cursor-pointer group">
+                      <input
+                        type="checkbox"
+                        className="sr-only"
+                        checked={activeFilters.relationshipTypes.has(type)}
+                        onChange={() => toggleFilter('relationshipTypes', type)}
+                      />
+                      <span className={[
+                        'w-3.5 h-3.5 rounded flex items-center justify-center border transition-colors flex-shrink-0',
+                        activeFilters.relationshipTypes.has(type)
+                          ? 'border-transparent'
+                          : 'border-gray-300 bg-white group-hover:border-gray-400',
+                      ].join(' ')}
+                        style={activeFilters.relationshipTypes.has(type)
+                          ? { backgroundColor: RELATIONSHIP_EDGE_COLORS[type] ?? '#94A3B8' }
+                          : {}}
+                      >
+                        {activeFilters.relationshipTypes.has(type) && (
+                          <svg viewBox="0 0 10 10" className="w-2 h-2 text-white" fill="none" stroke="currentColor" strokeWidth="2">
+                            <polyline points="1.5,5 4,7.5 8.5,2.5" />
+                          </svg>
+                        )}
+                      </span>
+                      <span className="flex items-center gap-1.5 text-[11px] text-gray-600">
+                        <span className="w-2 h-2 rounded-full flex-shrink-0" style={{ backgroundColor: RELATIONSHIP_EDGE_COLORS[type] ?? '#94A3B8' }} />
+                        {formatRelationship(type)}
+                      </span>
+                    </label>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Divider */}
+            {availableOptions.relTypes.length > 0 && availableOptions.departments.length > 0 && (
+              <div className="w-px self-stretch bg-gray-100 flex-shrink-0" />
+            )}
+
+            {/* Department */}
+            {availableOptions.departments.length > 0 && (
+              <div className="min-w-[120px]">
+                <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-wider mb-2">Department</p>
+                <div className="flex flex-col gap-1.5">
+                  {availableOptions.departments.map(dept => (
+                    <label key={dept} className="flex items-center gap-2 cursor-pointer group">
+                      <input
+                        type="checkbox"
+                        className="sr-only"
+                        checked={activeFilters.departments.has(dept)}
+                        onChange={() => toggleFilter('departments', dept)}
+                      />
+                      <span className={[
+                        'w-3.5 h-3.5 rounded flex items-center justify-center border transition-colors flex-shrink-0',
+                        activeFilters.departments.has(dept)
+                          ? 'bg-brand-sidebar border-brand-sidebar'
+                          : 'border-gray-300 bg-white group-hover:border-gray-400',
+                      ].join(' ')}>
+                        {activeFilters.departments.has(dept) && (
+                          <svg viewBox="0 0 10 10" className="w-2 h-2 text-white" fill="none" stroke="currentColor" strokeWidth="2">
+                            <polyline points="1.5,5 4,7.5 8.5,2.5" />
+                          </svg>
+                        )}
+                      </span>
+                      <span className="text-[11px] text-gray-600">{dept}</span>
+                    </label>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Divider */}
+            {availableOptions.departments.length > 0 && availableOptions.accounts.length > 0 && (
+              <div className="w-px self-stretch bg-gray-100 flex-shrink-0" />
+            )}
+
+            {/* Account */}
+            {availableOptions.accounts.length > 0 && (
+              <div className="min-w-[120px]">
+                <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-wider mb-2">Account</p>
+                <div className="flex flex-col gap-1.5">
+                  {availableOptions.accounts.map(acc => (
+                    <label key={acc} className="flex items-center gap-2 cursor-pointer group">
+                      <input
+                        type="checkbox"
+                        className="sr-only"
+                        checked={activeFilters.accounts.has(acc)}
+                        onChange={() => toggleFilter('accounts', acc)}
+                      />
+                      <span className={[
+                        'w-3.5 h-3.5 rounded flex items-center justify-center border transition-colors flex-shrink-0',
+                        activeFilters.accounts.has(acc)
+                          ? 'bg-cyan-500 border-cyan-500'
+                          : 'border-gray-300 bg-white group-hover:border-gray-400',
+                      ].join(' ')}>
+                        {activeFilters.accounts.has(acc) && (
+                          <svg viewBox="0 0 10 10" className="w-2 h-2 text-white" fill="none" stroke="currentColor" strokeWidth="2">
+                            <polyline points="1.5,5 4,7.5 8.5,2.5" />
+                          </svg>
+                        )}
+                      </span>
+                      <span className="text-[11px] text-gray-600">{acc}</span>
+                    </label>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Divider */}
+            {availableOptions.accounts.length > 0 && availableOptions.projects.length > 0 && (
+              <div className="w-px self-stretch bg-gray-100 flex-shrink-0" />
+            )}
+
+            {/* Project */}
+            {availableOptions.projects.length > 0 && (
+              <div className="min-w-[140px]">
+                <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-wider mb-2">Project</p>
+                <div className="flex flex-col gap-1.5">
+                  {availableOptions.projects.map(proj => (
+                    <label key={proj} className="flex items-center gap-2 cursor-pointer group">
+                      <input
+                        type="checkbox"
+                        className="sr-only"
+                        checked={activeFilters.projects.has(proj)}
+                        onChange={() => toggleFilter('projects', proj)}
+                      />
+                      <span className={[
+                        'w-3.5 h-3.5 rounded flex items-center justify-center border transition-colors flex-shrink-0',
+                        activeFilters.projects.has(proj)
+                          ? 'bg-emerald-500 border-emerald-500'
+                          : 'border-gray-300 bg-white group-hover:border-gray-400',
+                      ].join(' ')}>
+                        {activeFilters.projects.has(proj) && (
+                          <svg viewBox="0 0 10 10" className="w-2 h-2 text-white" fill="none" stroke="currentColor" strokeWidth="2">
+                            <polyline points="1.5,5 4,7.5 8.5,2.5" />
+                          </svg>
+                        )}
+                      </span>
+                      <span className="text-[11px] text-gray-600">{proj}</span>
+                    </label>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Clear all — only shown when something is active */}
+            {activeFilterCount > 0 && (
+              <div className="ml-auto self-start flex-shrink-0">
+                <button
+                  onClick={clearAllFilters}
+                  className="text-[11px] text-red-500 hover:text-red-700 font-medium flex items-center gap-1 transition-colors"
+                >
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" className="w-3 h-3">
+                    <line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" />
+                  </svg>
+                  Clear all
+                </button>
+              </div>
+            )}
+          </div>
+
+          {/* Active filter chips */}
+          {activeFilterCount > 0 && (
+            <div className="flex flex-wrap gap-1.5 px-4 pb-2.5">
+              {[...activeFilters.relationshipTypes].map(type => (
+                <FilterChip
+                  key={`rel-${type}`}
+                  label={formatRelationship(type)}
+                  color={RELATIONSHIP_EDGE_COLORS[type]}
+                  onRemove={() => toggleFilter('relationshipTypes', type)}
+                />
+              ))}
+              {[...activeFilters.departments].map(dept => (
+                <FilterChip key={`dept-${dept}`} label={dept} onRemove={() => toggleFilter('departments', dept)} />
+              ))}
+              {[...activeFilters.accounts].map(acc => (
+                <FilterChip key={`acc-${acc}`} label={acc} color="#06B6D4" onRemove={() => toggleFilter('accounts', acc)} />
+              ))}
+              {[...activeFilters.projects].map(proj => (
+                <FilterChip key={`proj-${proj}`} label={proj} color="#10B981" onRemove={() => toggleFilter('projects', proj)} />
+              ))}
+            </div>
+          )}
         </div>
       )}
 
@@ -1042,6 +1398,62 @@ function IconXSmall() {
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" className="w-3 h-3">
       <line x1="18" y1="6" x2="6" y2="18" />
       <line x1="6" y1="6" x2="18" y2="18" />
+    </svg>
+  )
+}
+
+function IconZoomIn() {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-3.5 h-3.5">
+      <circle cx="11" cy="11" r="8" />
+      <line x1="21" y1="21" x2="16.65" y2="16.65" />
+      <line x1="11" y1="8" x2="11" y2="14" />
+      <line x1="8" y1="11" x2="14" y2="11" />
+    </svg>
+  )
+}
+
+function IconZoomOut() {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-3.5 h-3.5">
+      <circle cx="11" cy="11" r="8" />
+      <line x1="21" y1="21" x2="16.65" y2="16.65" />
+      <line x1="8" y1="11" x2="14" y2="11" />
+    </svg>
+  )
+}
+
+function IconFilter() {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-3.5 h-3.5">
+      <polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3" />
+    </svg>
+  )
+}
+
+function FilterChip({ label, color, onRemove }) {
+  return (
+    <span
+      className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-medium text-white"
+      style={{ backgroundColor: color ?? '#6366F1' }}
+    >
+      {label}
+      <button onClick={onRemove} className="ml-0.5 hover:opacity-70 transition-opacity" aria-label={`Remove ${label} filter`}>
+        <svg viewBox="0 0 10 10" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" className="w-2 h-2">
+          <line x1="1" y1="1" x2="9" y2="9" /><line x1="9" y1="1" x2="1" y2="9" />
+        </svg>
+      </button>
+    </span>
+  )
+}
+
+function IconFitView() {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-3.5 h-3.5">
+      <path d="M8 3H5a2 2 0 0 0-2 2v3" />
+      <path d="M21 8V5a2 2 0 0 0-2-2h-3" />
+      <path d="M3 16v3a2 2 0 0 0 2 2h3" />
+      <path d="M16 21h3a2 2 0 0 0 2-2v-3" />
     </svg>
   )
 }

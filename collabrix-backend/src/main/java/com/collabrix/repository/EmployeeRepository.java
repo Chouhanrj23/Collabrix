@@ -11,8 +11,10 @@ import java.util.Optional;
 @Repository
 public interface EmployeeRepository extends Neo4jRepository<Employee, Long> {
 
+    @Query("MATCH (e:Employee {email: $email}) RETURN e")
     Optional<Employee> findByEmail(String email);
 
+    @Query("MATCH (e:Employee {username: $username}) RETURN e")
     Optional<Employee> findByUsername(String username);
 
     @Query("MATCH (e:Employee) WHERE e.department IS NOT NULL RETURN DISTINCT e.department")

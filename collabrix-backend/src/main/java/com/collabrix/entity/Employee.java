@@ -45,6 +45,8 @@ public class Employee {
 
     private String department;
     private String account;
+
+    @ConvertWith(converter = LocalDateConverter.class)
     private LocalDate joiningDate;
     private String profileImageUrl;
     private String project;
@@ -114,6 +116,24 @@ public class Employee {
         @Override
         public Grade read(@NonNull Value source) {
             return source.isNull() ? null : Grade.valueOf(source.asString());
+        }
+    }
+
+    private static class LocalDateConverter implements Neo4jPersistentPropertyConverter<LocalDate> {
+        @Override
+        @NonNull
+        public Value write(@Nullable LocalDate date) {
+            return date == null ? Values.NULL : Values.value(date.toString());
+        }
+
+        @Override
+        public LocalDate read(@NonNull Value source) {
+            if (source.isNull()) return null;
+            try {
+                return source.asLocalDate();
+            } catch (Exception e) {
+                return LocalDate.parse(source.asString());
+            }
         }
     }
 }

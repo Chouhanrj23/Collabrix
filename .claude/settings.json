@@ -1,10 +1,17 @@
 {
   "permissions": {
+    "allow": [
+      "Bash(mvn compile:*)",
+      "Bash(xargs ls:*)",
+      "Bash(curl -s -u neo4j:collabrix123 http://localhost:7474/db/neo4j/tx/commit -X POST -H 'Content-Type: application/json' -d '{\"\"\"\"statements\"\"\"\":[:*)",
+      "Bash(curl -s -u neo4j:collabrix123 http://localhost:7474/db/neo4j/tx/commit -X POST -H \"Content-Type: application/json\" -d '{\"\"statements\"\":[:*)",
+      "Bash(curl -s -u neo4j:collabrix123 http://localhost:7474/db/neo4j/tx/commit -X POST -H \"Content-Type: application/json\" -d '{\"\"statements\"\":[{\"\"statement\"\":\"\"MATCH \\(n\\) DETACH DELETE n\"\"}]}')",
+      "Bash(curl -s -u neo4j:collabrix123 http://localhost:7474/db/neo4j/tx/commit -X POST -H 'Content-Type: application/json' -d '{\"\"\"\"statements\"\"\"\":[{\"\"\"\"statement\"\"\"\":\"\"\"\"MATCH \\(n\\) DETACH DELETE n\"\"\"\"}]}')",
+      "Bash(xargs cat:*)",
+      "Bash(taskkill //PID 7744 //F)"
+    ],
     "additionalDirectories": [
       "c:\\Users\\OPEN_OS\\Desktop\\Collabrix\\collabrix-backend\\src\\main\\java\\com\\collabrix"
-    ],
-    "allow": [
-      "Bash(mvn compile:*)"
     ]
   }
 }
