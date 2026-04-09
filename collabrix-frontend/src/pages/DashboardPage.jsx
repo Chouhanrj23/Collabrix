@@ -1,8 +1,10 @@
-import { useEffect, useState, useCallback, memo, useMemo } from 'react'
+import { useEffect, useState, useCallback, memo, useMemo, useRef } from 'react'
 import { useAuth } from '../context/AuthContext'
+import { useNavigate } from 'react-router-dom'
 import { graphService } from '../api/graphService'
 import { connectionService } from '../api/connectionService'
 import { feedbackService } from '../api/feedbackService'
+import { employeeService } from '../api/employeeService'
 import CollaborationGraph from '../components/graph/CollaborationGraph'
 import PendingRequestCard from '../components/connections/PendingRequestCard'
 import Alert from '../components/common/Alert'
@@ -14,7 +16,9 @@ import { getInitials, formatDate } from '../utils/formatters'
 // + feedbackService.getReceived + connectionService.getMy (all fetched in parallel).
 
 export default function DashboardPage() {
-  const { user } = useAuth()
+  const { user, setUser } = useAuth()
+  const navigate = useNavigate()
+  const fileInputRef = useRef(null)
 
   const [graphData, setGraphData] = useState(null)
   const [pending, setPending] = useState([])
@@ -23,6 +27,9 @@ export default function DashboardPage() {
   const [loading, setLoading] = useState(true)
   const [graphLoading, setGraphLoading] = useState(true)
   const [error, setError] = useState('')
+  const [profileImage, setProfileImage] = useState(user?.profileImageUrl ?? null)
+  const [uploading, setUploading] = useState(false)
+  const [activePanel, setActivePanel] = useState(null) // 'connections'|'pending'|'feedback'|'rating'
 
   useEffect(() => {
     // Full org graph — fetched separately so the network renders ASAP
@@ -73,6 +80,22 @@ export default function DashboardPage() {
       return next
     }), [])
 
+  const handleProfileUpload = async (e) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+    setUploading(true)
+    try {
+      const res = await employeeService.uploadProfilePicture(file)
+      const url = res?.profileImageUrl ?? res
+      setProfileImage(url)
+    } catch {
+      setError('Failed to upload profile picture.')
+    } finally {
+      setUploading(false)
+      e.target.value = ''
+    }
+  }
+
   const today = new Date().toLocaleDateString('en-IN', {
     weekday: 'long', day: 'numeric', month: 'long', year: 'numeric',
   })
@@ -85,11 +108,45 @@ export default function DashboardPage() {
 
       {/* ── Welcome bar ─────────────────────────────────────────────────────── */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-white rounded-2xl px-6 py-5 shadow-sm border border-gray-100 transition-all duration-200 hover:shadow-md">
-        <div>
-          <h2 className="text-xl font-bold text-gray-900 tracking-tight">
-            Welcome back, {user?.name?.split(' ')[0]}
-          </h2>
-          <p className="text-sm text-gray-600 mt-1">{today}</p>
+        <div className="flex items-center gap-4">
+          {/* Profile picture with upload */}
+          <div className="relative flex-shrink-0 group cursor-pointer" onClick={() => fileInputRef.current?.click()} title="Change profile picture">
+            {profileImage ? (
+              <img
+                src={profileImage}
+                alt={user?.name}
+                className="w-14 h-14 rounded-full object-cover border-2 shadow-md"
+                style={{ borderColor: designationColors.bg }}
+                onError={() => setProfileImage(null)}
+              />
+            ) : (
+              <div
+                className="w-14 h-14 rounded-full flex items-center justify-center text-white text-xl font-semibold shadow-md border-2"
+                style={{ backgroundColor: designationColors.bg, borderColor: designationColors.bg }}
+              >
+                {getInitials(user?.name)}
+              </div>
+            )}
+            <div className="absolute inset-0 rounded-full bg-black/0 group-hover:bg-black/40 flex items-center justify-center transition-all duration-200">
+              <span className="opacity-0 group-hover:opacity-100 transition-opacity duration-200">
+                {uploading ? (
+                  <svg className="w-5 h-5 text-white animate-spin" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="3" strokeDasharray="32" strokeLinecap="round" /></svg>
+                ) : (
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-5 h-5 text-white">
+                    <path d="M23 19a2 2 0 01-2 2H3a2 2 0 01-2-2V8a2 2 0 012-2h4l2-3h6l2 3h4a2 2 0 012 2z" />
+                    <circle cx="12" cy="13" r="4" />
+                  </svg>
+                )}
+              </span>
+            </div>
+            <input ref={fileInputRef} type="file" accept="image/jpeg,image/png,image/webp" onChange={handleProfileUpload} className="hidden" />
+          </div>
+          <div>
+            <h2 className="text-xl font-bold text-gray-900 tracking-tight">
+              Welcome back, {user?.name?.split(' ')[0]}
+            </h2>
+            <p className="text-sm text-gray-600 mt-1">{today}</p>
+          </div>
         </div>
         <div className="flex items-center gap-3">
           <span
@@ -144,6 +201,7 @@ export default function DashboardPage() {
           iconBg="bg-blue-50"
           iconColor="text-blue-600"
           loading={loading}
+          onClick={() => navigate('/connections')}
         />
         <StatCard
           label="Pending Approvals"
@@ -153,6 +211,7 @@ export default function DashboardPage() {
           iconColor="text-amber-600"
           loading={loading}
           highlight={!loading && stats?.pendingCount > 0}
+          onClick={() => setActivePanel(activePanel === 'pending' ? null : 'pending')}
         />
         <StatCard
           label="Feedback Received"
@@ -161,6 +220,7 @@ export default function DashboardPage() {
           iconBg="bg-violet-50"
           iconColor="text-violet-600"
           loading={loading}
+          onClick={() => navigate('/feedback')}
         />
         <StatCard
           label="Avg Rating"
@@ -170,8 +230,34 @@ export default function DashboardPage() {
           iconColor="text-emerald-600"
           loading={loading}
           suffix={stats?.avgRating ? ' / 5' : ''}
+          onClick={() => navigate('/feedback')}
         />
       </div>
+
+      {/* ── Pending panel (expanded from stat card click) ───────────────────── */}
+      {activePanel === 'pending' && !loading && (
+        <div className="bg-white rounded-2xl border border-amber-200 shadow-sm overflow-hidden">
+          <div className="flex items-center justify-between px-5 py-4 border-b border-amber-100">
+            <h3 className="text-sm font-semibold text-gray-900">Pending Requests</h3>
+            <button onClick={() => setActivePanel(null)} className="text-gray-400 hover:text-gray-600 transition-colors">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" className="w-4 h-4">
+                <line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" />
+              </svg>
+            </button>
+          </div>
+          {pending.length === 0 ? (
+            <p className="px-5 py-6 text-sm text-gray-500 text-center">No pending requests.</p>
+          ) : (
+            <div className="divide-y divide-gray-50">
+              {pending.map((req) => (
+                <div key={req.id} className="px-4 py-3 transition-colors duration-150 hover:bg-gray-50/50">
+                  <PendingRequestCard request={req} onResolved={handlePendingResolved} />
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
 
       {/* ── Feedback Summary ─────────────────────────────────────────────────── */}
       <FeedbackSummary feedback={receivedFeedback} loading={loading} />
@@ -239,9 +325,13 @@ export default function DashboardPage() {
             <div className="flex items-center justify-between px-5 py-4 border-b border-gray-100">
               <h3 className="text-sm font-semibold text-gray-900">Pending Requests</h3>
               {!loading && pending.length > 0 && (
-                <span className="flex items-center justify-center min-w-[22px] h-[22px] px-1.5 rounded-full bg-amber-500 text-white text-[10px] font-bold shadow-sm">
+                <button
+                  onClick={() => setActivePanel(activePanel === 'pending' ? null : 'pending')}
+                  className="flex items-center justify-center min-w-[22px] h-[22px] px-1.5 rounded-full bg-amber-500 hover:bg-amber-600 text-white text-[10px] font-bold shadow-sm transition-colors"
+                  title="View all pending requests"
+                >
                   {pending.length}
-                </span>
+                </button>
               )}
             </div>
 
@@ -264,9 +354,12 @@ export default function DashboardPage() {
                   </div>
                 ))}
                 {pending.length > 5 && (
-                  <p className="px-5 py-3 text-xs text-gray-700 text-center">
-                    +{pending.length - 5} more — visit My Connections to see all
-                  </p>
+                  <button
+                    onClick={() => setActivePanel(activePanel === 'pending' ? null : 'pending')}
+                    className="w-full px-5 py-3 text-xs text-blue-600 hover:text-blue-800 font-medium text-center transition-colors hover:bg-gray-50"
+                  >
+                    +{pending.length - 5} more — click to view all
+                  </button>
                 )}
               </div>
             )}
@@ -410,12 +503,14 @@ function FeedbackSummary({ feedback, loading }) {
 
 // ── StatCard ─────────────────────────────────────────────────────────────────
 
-const StatCard = memo(function StatCard({ label, value, icon, iconBg, iconColor, loading, highlight, suffix = '' }) {
+const StatCard = memo(function StatCard({ label, value, icon, iconBg, iconColor, loading, highlight, suffix = '', onClick }) {
   return (
     <div
+      onClick={onClick}
       className={[
         'group bg-white rounded-2xl border px-5 py-4 flex items-center gap-4',
         'transition-all duration-200 hover:shadow-md hover:-translate-y-0.5',
+        onClick ? 'cursor-pointer' : '',
         highlight ? 'border-amber-200 shadow-sm ring-1 ring-amber-100' : 'border-gray-100 shadow-sm',
       ].join(' ')}
     >

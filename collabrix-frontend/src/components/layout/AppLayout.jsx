@@ -4,7 +4,7 @@ import Sidebar from './Sidebar'
 import Header from './Header'
 
 const PAGE_TITLES = {
-  '/dashboard':      'Collaboration Graph',
+  '/dashboard':      'Dashboard',
   '/connections':    'My Connections',
   '/add-connection': 'Add Connection',
   '/employees':      'Employees',

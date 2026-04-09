@@ -48,11 +48,6 @@ public class DataSeeder implements ApplicationRunner {
     private static final String STD_CREATED   = "2021-01-01T09:00:00";
     private static final String STD_RESOLVED  = "2021-01-05T09:00:00";
 
-    // Exception — Raj ↔ Praveen PEER connection
-    private static final String PEER_START    = "2022-06-01";
-    private static final String PEER_CREATED  = "2022-06-01T09:00:00";
-    private static final String PEER_RESOLVED = "2022-06-05T09:00:00";
-
     @Override
     public void run(ApplicationArguments args) {
         if (employeeRepository.count() > 0) {
@@ -97,14 +92,14 @@ public class DataSeeder implements ApplicationRunner {
         return List.of(
                 emp("dilip",        "Dilip Srinivas",           "dilip@collabrix.com",          hash, Designation.DIRECTOR,  "GS",     "Internal",            LocalDate.of(2016,  4,  1)),
                 emp("sankara",      "T Sankara Subramanian",    "sankara@collabrix.com",         hash, Designation.PARTNER,   "GS",     "Internal",            LocalDate.of(2017,  8, 15)),
-                emp("malli",        "Mallikarjun Kandkuru",     "malli@collabrix.com",           hash, Designation.PARTNER,   "Others", "Internal",            LocalDate.of(2018,  1, 10)),
-                emp("kratika",      "Kratika Sharma",           "kratika@collabrix.com",         hash, Designation.MANAGER,   "GS",     "Internal",            LocalDate.of(2019,  3, 20)),
+                emp("malli",        "Mallikarjun Kandkuru",     "malli@collabrix.com",           hash, Designation.PARTNER,   "Others", "AI in SDLC, Internal", LocalDate.of(2018,  1, 10)),
+                emp("kratika",      "Kratika Sharma",           "kratika@collabrix.com",         hash, Designation.MANAGER,   "GS",     "AI in SDLC, Internal", LocalDate.of(2019,  3, 20)),
                 emp("karthik",      "Karthik Pai",              "karthik@collabrix.com",         hash, Designation.MANAGER,   "GS",     "Internal",            LocalDate.of(2019,  7,  1)),
                 emp("hiren",        "Hiren Shah",               "hiren@collabrix.com",           hash, Designation.MANAGER,   "Others", "Internal",            LocalDate.of(2020,  2, 14)),
-                emp("raj",          "Raj Chouhan",              "raj@collabrix.com",             hash, Designation.CONSULTANT,"GS",     "AI in SDLC, Banking", LocalDate.of(2021,  6,  1)),
-                emp("praveen",      "Praveen Agarwal",          "praveen@collabrix.com",         hash, Designation.CONSULTANT,"Others", "AI in SDLC",          LocalDate.of(2021,  9, 15)),
-                emp("gagan",        "Gagan Yadav",              "gagan@collabrix.com",           hash, Designation.ASSOCIATE, "Others", "AI in SDLC",          LocalDate.of(2023,  8, 21)),
-                emp("ganesh.gatti", "Ganesh Gatti",             "ganesh.gatti@collabrix.com",    hash, Designation.ASSOCIATE, "GS",     "AI in SDLC, Banking", LocalDate.of(2024,  1,  1)),
+                emp("raj",          "Raj Chouhan",              "raj@collabrix.com",             hash, Designation.CONSULTANT,"AI",     "AI in SDLC, Banking", LocalDate.of(2021,  6,  1)),
+                emp("praveen",      "Praveen Agarwal",          "praveen@collabrix.com",         hash, Designation.CONSULTANT,"AI",     "AI in SDLC",          LocalDate.of(2021,  9, 15)),
+                emp("gagan",        "Gagan Yadav",              "gagan@collabrix.com",           hash, Designation.ASSOCIATE, "AI",     "AI in SDLC",          LocalDate.of(2023,  8, 21)),
+                emp("ganesh.gatti", "Ganesh Gatti",             "ganesh.gatti@collabrix.com",    hash, Designation.ASSOCIATE, "AI",     "AI in SDLC, Banking", LocalDate.of(2024,  1,  1)),
                 emp("nirmal",       "Nirmal Bharadwaj",         "nirmal@collabrix.com",          hash, Designation.MANAGER,   "GS",     "Banking",             LocalDate.of(2019,  5, 10)),
                 emp("snehaa",       "Snehaa V",                 "snehaa@collabrix.com",          hash, Designation.MANAGER,   "GS",     "Banking",             LocalDate.of(2020,  3, 15)),
                 emp("meraj",        "Meraj Hassan",             "meraj@collabrix.com",           hash, Designation.MANAGER,   "GS",     "Banking",             LocalDate.of(2020,  8,  1)),
@@ -113,9 +108,12 @@ public class DataSeeder implements ApplicationRunner {
                 emp("monica",       "Monica B",                 "monica@collabrix.com",          hash, Designation.CONSULTANT,"GS",     "Banking",             LocalDate.of(2024,  7,  1)),
                 emp("meet",         "Meet Gandhi",              "meet@collabrix.com",            hash, Designation.CONSULTANT,"GS",     "Banking",             LocalDate.of(2024,  7, 15)),
                 emp("kundan",       "Kundan Kumar",             "kundan@collabrix.com",          hash, Designation.CONSULTANT,"GS",     "Banking",             LocalDate.of(2024,  8,  1)),
-                emp("ankit",        "Ankit Kumar",              "ankit@collabrix.com",           hash, Designation.ASSOCIATE, "GS",     "Banking",             LocalDate.of(2025,  1,  6)),
-                emp("yashraj",      "Yashraj Mandloi",          "yashraj@collabrix.com",         hash, Designation.ASSOCIATE, "GS",     "Banking",             LocalDate.of(2025,  1, 13)),
-                emp("prajyot",      "Prajyot Patil",            "prajyot@collabrix.com",         hash, Designation.ASSOCIATE, "GS",     "Banking",             LocalDate.of(2025,  2,  3))
+                emp("ankit",        "Ankit Kumar",              "ankit@collabrix.com",           hash, Designation.ASSOCIATE,          "GS",     "Banking",             LocalDate.of(2025,  1,  6)),
+                emp("yashraj",      "Yashraj Mandloi",          "yashraj@collabrix.com",         hash, Designation.ASSOCIATE,          "GS",     "Banking",             LocalDate.of(2025,  1, 13)),
+                emp("prajyot",      "Prajyot Patil",            "prajyot@collabrix.com",         hash, Designation.ASSOCIATE,          "GS",     "Banking",             LocalDate.of(2025,  2,  3)),
+                emp("girish.rao",   "Girish Rao",               "girish.rao@collabrix.com",      hash, Designation.MANAGER,           "GS",     "AI in SDLC",          LocalDate.of(2019,  6,  1)),
+                emp("sarbani.roy",  "Sarbani Roy",              "sarbani.roy@collabrix.com",     hash, Designation.MANAGER,           "MS",     "Banking, AI in SDLC", LocalDate.of(2020,  5,  1)),
+                emp("abhinav",      "Abhinav Sidhartha",        "abhinav.sidhartha@collabrix.com",hash, Designation.SENIOR_CONSULTANT,"MS",     "Banking, AI in SDLC", LocalDate.of(2022,  3,  1))
         );
     }
 
@@ -164,6 +162,9 @@ public class DataSeeder implements ApplicationRunner {
         long ankit   = id.get("ankit");
         long yashraj = id.get("yashraj");
         long prajyot = id.get("prajyot");
+        long girish  = id.get("girish.rao");
+        long sarbani = id.get("sarbani.roy");
+        long abhinav = id.get("abhinav");
 
         return List.of(
                 // Reporting-Partner links (senior ↔ PARTNER/DIRECTOR)
@@ -183,16 +184,22 @@ public class DataSeeder implements ApplicationRunner {
                 conn(hiren,   sankara, RelationshipType.ENGAGEMENT_MANAGER, "Others", "Internal",            STD_START, null, STD_CREATED, STD_RESOLVED),
 
                 // Consultant links
-                conn(raj,     kratika, RelationshipType.REPORTING_MANAGER,  "GS",     "AI in SDLC, Banking", STD_START, null, STD_CREATED, STD_RESOLVED),
-                conn(praveen, karthik, RelationshipType.ENGAGEMENT_MANAGER, "Others", "AI in SDLC",          STD_START, null, STD_CREATED, STD_RESOLVED),
+                conn(raj,     kratika, RelationshipType.REPORTING_MANAGER,  "AI",     "AI in SDLC, Banking", STD_START, null, STD_CREATED, STD_RESOLVED),
+                conn(raj,     sankara, RelationshipType.REPORTING_PARTNER,  "AI",     "AI in SDLC, Banking", STD_START, null, STD_CREATED, STD_RESOLVED),
+                conn(raj,     malli,   RelationshipType.ENGAGEMENT_PARTNER, "AI",     "AI in SDLC, Banking", STD_START, null, STD_CREATED, STD_RESOLVED),
+                conn(praveen, karthik, RelationshipType.REPORTING_MANAGER,  "AI",     "AI in SDLC",          STD_START, null, STD_CREATED, STD_RESOLVED),
+                conn(praveen, kratika, RelationshipType.ENGAGEMENT_MANAGER, "AI",     "AI in SDLC",          STD_START, null, STD_CREATED, STD_RESOLVED),
 
-                // Peer
-                conn(raj,     praveen, RelationshipType.PEER,               "GS",     "AI in SDLC, Banking", PEER_START, null, PEER_CREATED, PEER_RESOLVED),
+                // Internal Product Development
+                conn(raj,     praveen, RelationshipType.INTERNAL_PRODUCT_DEVELOPMENT, "AI", "AI in SDLC", STD_START, null, STD_CREATED, STD_RESOLVED),
+                conn(raj,     gagan,   RelationshipType.INTERNAL_PRODUCT_DEVELOPMENT, "AI", "AI in SDLC", STD_START, null, STD_CREATED, STD_RESOLVED),
+                conn(raj,     ganesh,  RelationshipType.INTERNAL_PRODUCT_DEVELOPMENT, "AI", "AI in SDLC", STD_START, null, STD_CREATED, STD_RESOLVED),
 
                 // Associate links
-                conn(gagan,   kratika, RelationshipType.REPORTING_MANAGER,  "Others", "AI in SDLC",          STD_START, null, STD_CREATED, STD_RESOLVED),
-                conn(ganesh,  kratika, RelationshipType.REPORTING_MANAGER,  "GS",     "AI in SDLC, Banking", STD_START, null, STD_CREATED, STD_RESOLVED),
-                conn(ganesh,  hiren,   RelationshipType.ENGAGEMENT_MANAGER, "GS",     "AI in SDLC, Banking", STD_START, null, STD_CREATED, STD_RESOLVED),
+                conn(gagan,   hiren,   RelationshipType.REPORTING_MANAGER,  "AI",     "AI in SDLC",          STD_START, null, STD_CREATED, STD_RESOLVED),
+                conn(gagan,   kratika, RelationshipType.ENGAGEMENT_MANAGER, "AI",     "AI in SDLC",          STD_START, null, STD_CREATED, STD_RESOLVED),
+                conn(ganesh,  girish,  RelationshipType.REPORTING_MANAGER,  "AI",     "AI in SDLC, Banking", STD_START, null, STD_CREATED, STD_RESOLVED),
+                conn(ganesh,  kratika, RelationshipType.ENGAGEMENT_MANAGER, "AI",     "AI in SDLC, Banking", STD_START, null, STD_CREATED, STD_RESOLVED),
 
                 // Nirmal, Snehaa, Meraj, Vinayak — PEER to Kratika, senior links
                 conn(nirmal,  kratika, RelationshipType.PEER,               "GS",     "Banking",             "2021-06-01", null, "2021-06-01T09:00:00", "2021-06-05T09:00:00"),
@@ -215,7 +222,13 @@ public class DataSeeder implements ApplicationRunner {
                 // Ankit Kumar, Yashraj Mandloi, Prajyot Patil — Associate → Kratika
                 conn(ankit,   kratika, RelationshipType.REPORTING_MANAGER,  "GS",     "Banking",             "2025-01-10", null, "2025-01-10T09:00:00", "2025-01-15T09:00:00"),
                 conn(yashraj, kratika, RelationshipType.REPORTING_MANAGER,  "GS",     "Banking",             "2025-01-17", null, "2025-01-17T09:00:00", "2025-01-22T09:00:00"),
-                conn(prajyot, kratika, RelationshipType.REPORTING_MANAGER,  "GS",     "Banking",             "2025-02-07", null, "2025-02-07T09:00:00", "2025-02-12T09:00:00")
+                conn(prajyot, kratika, RelationshipType.REPORTING_MANAGER,  "GS",     "Banking",             "2025-02-07", null, "2025-02-07T09:00:00", "2025-02-12T09:00:00"),
+
+                // Abhinav Sidhartha — Senior Consultant
+                conn(abhinav, sarbani, RelationshipType.REPORTING_MANAGER,  "MS",     "Banking, AI in SDLC", STD_START, null, STD_CREATED, STD_RESOLVED),
+                conn(abhinav, kratika, RelationshipType.ENGAGEMENT_MANAGER, "MS",     "Banking, AI in SDLC", STD_START, null, STD_CREATED, STD_RESOLVED),
+                conn(abhinav, sankara, RelationshipType.REPORTING_PARTNER,  "MS",     "Banking, AI in SDLC", STD_START, null, STD_CREATED, STD_RESOLVED),
+                conn(abhinav, malli,   RelationshipType.ENGAGEMENT_PARTNER, "MS",     "Banking, AI in SDLC", STD_START, null, STD_CREATED, STD_RESOLVED)
         );
     }
 

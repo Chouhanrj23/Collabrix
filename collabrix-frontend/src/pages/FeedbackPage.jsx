@@ -390,8 +390,8 @@ function GiveFeedbackTab({ user }) {
 }
 
 const DESIGNATION_DISPLAY_LOCAL = {
-  DIRECTOR: 'Director',
   PARTNER: 'Partner',
+  DIRECTOR: 'Director',
   MANAGER: 'Manager',
   SENIOR_CONSULTANT: 'Senior Consultant',
   CONSULTANT: 'Consultant',

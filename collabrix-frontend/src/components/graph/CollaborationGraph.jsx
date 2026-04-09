@@ -49,85 +49,186 @@ function designationLabel(d) {
 const HIERARCHY = {
   PARTNER: 1, DIRECTOR: 2, MANAGER: 3,
   SENIOR_CONSULTANT: 4, CONSULTANT: 5,
-  ASSOCIATE: 6, ASSOCIATE_CONSULTANT: 6,
+  ASSOCIATE_CONSULTANT: 6, ASSOCIATE: 6,
 }
 
-// ── Radial (circular) layout: center → direct ring → indirect ring ────────────
+// ── Zone-based layout ─────────────────────────────────────────────────────────
 //
-// vis-network canvas uses (0,0) as its logical origin; network.fit() then
-// pans/zooms so every node is visible regardless of the pixel size.
+// Zones (canvas coordinates, y increases downward):
+//   Top-right    → REPORTING_PARTNER, ENGAGEMENT_PARTNER
+//   Top-left     → REPORTING_MANAGER, ENGAGEMENT_MANAGER
+//   Centre-bottom→ PEER
+//   Bottom-left  → INTERNAL_PRODUCT_DEVELOPMENT
+//   Bottom-right → OTHERS / unrecognised
 //
-function computeRadialPositions(filteredGraphData, currentUserId) {
-  const RADIUS_DIRECT   = 150   // px from center to direct-connection ring
-  const RADIUS_INDIRECT = 300   // px from center to indirect-connection ring
-
-  const selfId = String(currentUserId)
-  const { directIds, indirectIds } = filteredGraphData
+// Radii are computed dynamically from the container size so the graph always
+// fills the available space without nodes overlapping each other.
+//
+function computeRadialPositions(filteredGraphData, currentUserId, containerEl) {
+  const selfId  = String(currentUserId)
+  const { edges, directIds, indirectIds } = filteredGraphData
   const pos = {}
 
-  // Random rotation so the layout looks different on every render / refresh
-  const rotationOffset = Math.random() * 2 * Math.PI
+  // ── Container-aware radius scaling ───────────────────────────────────────
+  const W = containerEl?.clientWidth  ?? 800
+  const H = containerEl?.clientHeight ?? 600
+  const minDim = Math.min(W, H)
+  const totalNodes = directIds.size + indirectIds.size + 1
 
-  // Center node
+  // Scale radius so nodes spread to fill ~80 % of the shorter dimension.
+  // More nodes → bigger spread, capped to avoid going off-screen.
+  const nodeSpacingFactor = Math.max(1, Math.sqrt(totalNodes / 6))
+  const R1 = Math.min(minDim * 0.28 * nodeSpacingFactor, minDim * 0.38)
+  const R2 = Math.min(minDim * 0.52 * nodeSpacingFactor, minDim * 0.70)
+  // Min inter-node gap in canvas units (≈ node diameter + label space)
+  const MIN_GAP = 75
+
+  // ── Zone definitions: base angle (rad) + max half-spread ─────────────────
+  // canvas: +x = right, +y = down  → top-right = angle −π/4
+  const ZONE_ANGLE = {
+    REPORTING_PARTNER:            -Math.PI / 4,        // top-right
+    ENGAGEMENT_PARTNER:           -Math.PI / 4,
+    REPORTING_MANAGER:            -3 * Math.PI / 4,    // top-left
+    ENGAGEMENT_MANAGER:           -3 * Math.PI / 4,
+    PEER:                          Math.PI / 2,        // centre-bottom
+    INTERNAL_PRODUCT_DEVELOPMENT:  3 * Math.PI / 4,   // bottom-left
+    OTHERS:                        Math.PI / 4,        // bottom-right
+    __default__:                   Math.PI / 4,
+  }
+
+  // How wide each zone can fan (shared between two rel-types in same zone)
+  const ZONE_HALF_ANGLE = {
+    REPORTING_PARTNER:            Math.PI / 5,
+    ENGAGEMENT_PARTNER:           Math.PI / 5,
+    REPORTING_MANAGER:            Math.PI / 5,
+    ENGAGEMENT_MANAGER:           Math.PI / 5,
+    PEER:                         Math.PI / 4,
+    INTERNAL_PRODUCT_DEVELOPMENT: Math.PI / 5,
+    OTHERS:                       Math.PI / 5,
+    __default__:                  Math.PI / 5,
+  }
+
+  // ── Helper: enforce minimum angular gap between nodes on a ring ───────────
+  function spreadAngles(baseAngle, n, halfAngle, radius) {
+    if (n === 1) return [baseAngle]
+    // Minimum arc length between node centres = MIN_GAP
+    const minHalf = ((n - 1) * MIN_GAP) / (2 * radius)
+    const usedHalf = Math.max(halfAngle, minHalf)
+    return Array.from({ length: n }, (_, i) =>
+      baseAngle - usedHalf + i * (usedHalf * 2) / (n - 1)
+    )
+  }
+
+  // ── Center node ───────────────────────────────────────────────────────────
   pos[selfId] = { x: 0, y: 0 }
 
-  // ── Direct ring — evenly spaced with a random starting angle ─────────────
-  const directList = [...directIds]
-  directList.forEach((id, i) => {
-    const baseAngle = (2 * Math.PI * i) / directList.length + rotationOffset
-    const jitter = (Math.random() - 0.5) * 0.4   // ±~11° angular jitter
-    const radiusJitter = 1 + (Math.random() - 0.5) * 0.15  // ±7.5% radius jitter
-    const angle = baseAngle + jitter
-    pos[id] = {
-      x: RADIUS_DIRECT * radiusJitter * Math.cos(angle),
-      y: RADIUS_DIRECT * radiusJitter * Math.sin(angle),
-    }
+  // ── Classify each direct node by its dominant zone ────────────────────────
+  const relToSelf = {}
+  edges.forEach(edge => {
+    const from = String(edge.from)
+    const to   = String(edge.to)
+    const rel  = edge.relationshipType ?? 'OTHERS'
+    if (from === selfId) { if (!relToSelf[to])   relToSelf[to]   = []; relToSelf[to].push(rel)   }
+    else if (to === selfId) { if (!relToSelf[from]) relToSelf[from] = []; relToSelf[from].push(rel) }
+  })
+
+  const ZONE_PRIORITY = [
+    'REPORTING_PARTNER', 'ENGAGEMENT_PARTNER',
+    'REPORTING_MANAGER', 'ENGAGEMENT_MANAGER',
+    'PEER', 'INTERNAL_PRODUCT_DEVELOPMENT', 'OTHERS',
+  ]
+  const zoneOf = (nodeId) => {
+    const rels = relToSelf[nodeId] ?? []
+    for (const z of ZONE_PRIORITY) { if (rels.includes(z)) return z }
+    return '__default__'
+  }
+
+  // ── Group directs by canonical zone (merge partner zones, manager zones) ──
+  const CANONICAL = {
+    REPORTING_PARTNER: 'PARTNER_ZONE',   ENGAGEMENT_PARTNER: 'PARTNER_ZONE',
+    REPORTING_MANAGER: 'MANAGER_ZONE',   ENGAGEMENT_MANAGER: 'MANAGER_ZONE',
+    PEER: 'PEER', INTERNAL_PRODUCT_DEVELOPMENT: 'IPD', OTHERS: 'OTHERS', __default__: 'OTHERS',
+  }
+  const CANONICAL_ANGLE = {
+    PARTNER_ZONE: -Math.PI / 4,
+    MANAGER_ZONE: -3 * Math.PI / 4,
+    PEER:          Math.PI / 2,
+    IPD:           3 * Math.PI / 4,
+    OTHERS:        Math.PI / 4,
+  }
+  const CANONICAL_HALF = {
+    PARTNER_ZONE: Math.PI / 4,
+    MANAGER_ZONE: Math.PI / 4,
+    PEER:         Math.PI / 3,
+    IPD:          Math.PI / 4,
+    OTHERS:       Math.PI / 4,
+  }
+
+  const zoneGroups = {}
+  directIds.forEach(id => {
+    const canon = CANONICAL[zoneOf(id)] ?? 'OTHERS'
+    if (!zoneGroups[canon]) zoneGroups[canon] = []
+    zoneGroups[canon].push(id)
+  })
+
+  // ── Place direct nodes ────────────────────────────────────────────────────
+  Object.entries(zoneGroups).forEach(([canon, members]) => {
+    const baseAngle = CANONICAL_ANGLE[canon]
+    const halfAngle = CANONICAL_HALF[canon]
+    const angles = spreadAngles(baseAngle, members.length, halfAngle, R1)
+    members.forEach((id, i) => {
+      pos[id] = { x: R1 * Math.cos(angles[i]), y: R1 * Math.sin(angles[i]) }
+    })
   })
 
   if (indirectIds.size === 0) return pos
 
-  // ── Map each indirect node → its parent direct node ───────────────────────
+  // ── Place indirect nodes fanned behind their direct parent ────────────────
   const parentOf = {}
-  filteredGraphData.edges.forEach(edge => {
+  edges.forEach(edge => {
     const from = String(edge.from)
     const to   = String(edge.to)
     if (directIds.has(from) && indirectIds.has(to))   parentOf[to]   = from
     if (directIds.has(to)   && indirectIds.has(from)) parentOf[from] = to
   })
 
-  // ── Group indirect nodes by their parent ──────────────────────────────────
-  const groups = {}   // parentId → [childId, ...]
+  const indirectGroups = {}
   indirectIds.forEach(id => {
     const parent = parentOf[id] ?? '__orphan__'
-    if (!groups[parent]) groups[parent] = []
-    groups[parent].push(id)
+    if (!indirectGroups[parent]) indirectGroups[parent] = []
+    indirectGroups[parent].push(id)
   })
 
-  // Angular budget per parent sector (75 % of the sector to avoid overlap)
-  const sectorAngle = directList.length > 0
-    ? (2 * Math.PI) / directList.length * 0.75
-    : Math.PI / 2
-
-  Object.entries(groups).forEach(([parentId, children]) => {
+  Object.entries(indirectGroups).forEach(([parentId, children]) => {
     const parentPos = pos[parentId]
     const baseAngle = parentPos ? Math.atan2(parentPos.y, parentPos.x) : 0
-    const spread    = children.length > 1
-      ? Math.min(sectorAngle, (children.length - 1) * 0.35)
-      : 0
-
+    const halfAngle = Math.PI / 5
+    const angles = spreadAngles(baseAngle, children.length, halfAngle, R2)
     children.forEach((id, i) => {
-      const offset = children.length > 1
-        ? -spread / 2 + i * (spread / (children.length - 1))
-        : 0
-      const jitter = (Math.random() - 0.5) * 0.3
-      const radiusJitter = 1 + (Math.random() - 0.5) * 0.18
-      const angle = baseAngle + offset + jitter
-      pos[id] = {
-        x: RADIUS_INDIRECT * radiusJitter * Math.cos(angle),
-        y: RADIUS_INDIRECT * radiusJitter * Math.sin(angle),
-      }
+      pos[id] = { x: R2 * Math.cos(angles[i]), y: R2 * Math.sin(angles[i]) }
     })
   })
+
+  // ── Post-pass: push apart any still-overlapping nodes ────────────────────
+  const ids = Object.keys(pos).filter(id => id !== selfId)
+  for (let iter = 0; iter < 30; iter++) {
+    let moved = false
+    for (let a = 0; a < ids.length; a++) {
+      for (let b = a + 1; b < ids.length; b++) {
+        const pa = pos[ids[a]], pb = pos[ids[b]]
+        const dx = pb.x - pa.x, dy = pb.y - pa.y
+        const dist = Math.sqrt(dx * dx + dy * dy)
+        if (dist < MIN_GAP && dist > 0) {
+          const push = (MIN_GAP - dist) / 2 + 1
+          const nx = dx / dist, ny = dy / dist
+          pos[ids[a]].x -= nx * push;  pos[ids[a]].y -= ny * push
+          pos[ids[b]].x += nx * push;  pos[ids[b]].y += ny * push
+          moved = true
+        }
+      }
+    }
+    if (!moved) break
+  }
 
   return pos
 }
@@ -594,8 +695,8 @@ export default function CollaborationGraph({ graphData, loading, currentUserId, 
       MANAGER: 3,
       SENIOR_CONSULTANT: 4,
       CONSULTANT: 5,
+      ASSOCIATE_CONSULTANT: 6,
       ASSOCIATE: 6,
-      ASSOCIATE_CONSULTANT: 6
     }
 
     return filterAppliedGraphData.edges.map((edge, i) => {
@@ -720,9 +821,9 @@ export default function CollaborationGraph({ graphData, loading, currentUserId, 
     setSearchOpen(false)
     clearTimeout(flashTimerRef.current)
 
-    // Assign radial positions: center node → direct ring → indirect ring
+    // Assign zone-based positions by relationship type
     const posMap = currentUserId != null
-      ? computeRadialPositions(filterAppliedGraphData, currentUserId)
+      ? computeRadialPositions(filterAppliedGraphData, currentUserId, containerRef.current)
       : {}
 
     const positionedNodes = visNodeItems.map(n => {
@@ -743,7 +844,22 @@ export default function CollaborationGraph({ graphData, loading, currentUserId, 
     const network = new Network(containerRef.current, { nodes, edges }, GRAPH_OPTIONS)
     networkRef.current = network
 
-    const handleResize = () => network.redraw()
+    const handleResize = () => {
+      if (!networkRef.current) return
+      const newPosMap = currentUserId != null
+        ? computeRadialPositions(filterAppliedGraphData, currentUserId, containerRef.current)
+        : {}
+      const nodesDS = nodesDataSetRef.current
+      if (nodesDS && Object.keys(newPosMap).length) {
+        nodesDS.update(
+          nodesDS.getIds().map(id => {
+            const p = newPosMap[String(id)]
+            return p ? { id, x: p.x, y: p.y } : { id }
+          })
+        )
+      }
+      networkRef.current.fit({ animation: false })
+    }
     window.addEventListener('resize', handleResize)
 
     // Fit once after the first draw — physics is off so there is no stabilization event
@@ -959,11 +1075,6 @@ export default function CollaborationGraph({ graphData, loading, currentUserId, 
 
         {/* Graph stats */}
         <div className="flex items-center gap-2.5 text-xs text-gray-400 flex-shrink-0">
-          <span>
-            <span className="font-semibold text-gray-600">{visNodeItems.length}</span>
-            {' '}nodes
-          </span>
-          <span className="text-gray-200 select-none">·</span>
           <span>
             <span className="font-semibold text-gray-600">{visEdgeItems.length}</span>
             {' '}connections
@@ -1267,8 +1378,8 @@ export default function CollaborationGraph({ graphData, loading, currentUserId, 
             )}
 
             {/* Clear all — only shown when something is active */}
-            {activeFilterCount > 0 && (
-              <div className="ml-auto self-start flex-shrink-0">
+            <div className="ml-auto self-start flex-shrink-0 flex items-center gap-3">
+              {activeFilterCount > 0 && (
                 <button
                   onClick={clearAllFilters}
                   className="text-[11px] text-red-500 hover:text-red-700 font-medium flex items-center gap-1 transition-colors"
@@ -1278,8 +1389,17 @@ export default function CollaborationGraph({ graphData, loading, currentUserId, 
                   </svg>
                   Clear all
                 </button>
-              </div>
-            )}
+              )}
+              <button
+                onClick={() => setShowFilterPanel(false)}
+                className="text-[11px] text-gray-500 hover:text-gray-700 font-medium flex items-center gap-1 transition-colors"
+              >
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" className="w-3 h-3">
+                  <polyline points="18 15 12 9 6 15" />
+                </svg>
+                Hide filters
+              </button>
+            </div>
           </div>
 
           {/* Active filter chips */}

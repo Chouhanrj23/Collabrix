@@ -1,6 +1,6 @@
 export const DESIGNATION_LEVELS = {
-  DIRECTOR: 6,
-  PARTNER: 5,
+  PARTNER: 6,
+  DIRECTOR: 5,
   MANAGER: 4,
   SENIOR_CONSULTANT: 3,
   CONSULTANT: 2,
@@ -9,8 +9,8 @@ export const DESIGNATION_LEVELS = {
 }
 
 export const DESIGNATION_DISPLAY = {
-  DIRECTOR: 'Director',
   PARTNER: 'Partner',
+  DIRECTOR: 'Director',
   MANAGER: 'Manager',
   SENIOR_CONSULTANT: 'Senior Consultant',
   CONSULTANT: 'Consultant',
@@ -19,8 +19,8 @@ export const DESIGNATION_DISPLAY = {
 }
 
 export const DESIGNATION_COLORS = {
-  DIRECTOR: { bg: '#8E44AD', border: '#7D3C98', text: '#fff' },
   PARTNER: { bg: '#F39C12', border: '#E67E22', text: '#fff' },
+  DIRECTOR: { bg: '#8E44AD', border: '#7D3C98', text: '#fff' },
   MANAGER: { bg: '#2E86C1', border: '#1A6BAF', text: '#fff' },
   SENIOR_CONSULTANT: { bg: '#16A085', border: '#0E7368', text: '#fff' },
   CONSULTANT: { bg: '#27AE60', border: '#1E8449', text: '#fff' },
@@ -29,8 +29,8 @@ export const DESIGNATION_COLORS = {
 }
 
 export const DESIGNATION_BADGE_COLORS = {
-  DIRECTOR: '#8E44AD',
   PARTNER: '#E67E22',
+  DIRECTOR: '#8E44AD',
   MANAGER: '#2E86C1',
   SENIOR_CONSULTANT: '#16A085',
   CONSULTANT: '#27AE60',
@@ -87,7 +87,7 @@ export function isManagerOrAbove(designation) {
 }
 
 export function isPartnerOrAbove(designation) {
-  return getDesignationLevel(designation) >= 5
+  return getDesignationLevel(designation) >= 6
 }
 
 export function canViewFeedback(viewerDesignation, targetDesignation) {

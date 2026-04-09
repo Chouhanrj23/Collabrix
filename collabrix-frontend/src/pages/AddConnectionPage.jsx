@@ -415,6 +415,7 @@ export default function AddConnectionPage() {
                 <option value="">Select Account</option>
                 <option value="MS">MS</option>
                 <option value="GS">GS</option>
+                <option value="AI">AI</option>
                 <option value="OTHERS">Others</option>
               </select>
             </div>

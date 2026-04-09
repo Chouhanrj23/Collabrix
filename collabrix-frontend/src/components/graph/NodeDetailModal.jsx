@@ -250,24 +250,6 @@ export default function NodeDetailModal({ isOpen, node, edges = [], currentUserI
                     <DetailRow label="Account" value={employee?.account || node?.account || '—'} />
                     <DetailRow label="Project" value={employee?.project || node?.project || '—'} />
                     <DetailRow label="Joining Date" value={formatDate(employee?.joiningDate || node?.joiningDate) || '—'} />
-                    <DetailRow label="Duration" value={duration || '\u2014'} />
-                  </div>
-                )}
-
-                {/* -- Connection types -- */}
-                {connectedEdges.length > 0 && (
-                  <div>
-                    <p className="text-[11px] font-semibold text-gray-600 uppercase tracking-wider mb-2">
-                      Connection Type{connectedEdges.length > 1 ? 's' : ''}
-                    </p>
-                    <div className="flex flex-wrap gap-1.5">
-                      {connectedEdges.map((edge, i) => (
-                        <RelationshipBadge
-                          key={i}
-                          type={edge.relationshipType ?? edge.label}
-                        />
-                      ))}
-                    </div>
                   </div>
                 )}
 
