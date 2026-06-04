@@ -1,0 +1,20 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(taskkill /F /IM java.exe)",
+      "Bash(taskkill /F /IM node.exe)",
+      "Bash(xargs grep:*)",
+      "Bash(ls C:/Users/OPEN_OS/AppData/Local/Temp/*.jpg C:/Users/OPEN_OS/AppData/Local/Temp/*.png C:/Users/OPEN_OS/AppData/Local/Temp/*.jpeg)",
+      "Bash(ls C:/Users/OPEN_OS/Downloads/*.jpg C:/Users/OPEN_OS/Downloads/*.png C:/Users/OPEN_OS/Downloads/*.jpeg)",
+      "Bash(curl -s -X POST http://localhost:8080/api/auth/login -H 'Content-Type: application/json' -d '{\"email\":\"kratika@collabrix.com\",\"password\":\"Admin@123\"}')",
+      "Bash(python -c ':*)",
+      "Bash(curl -s -o /dev/null -w \"%{http_code}\" http://localhost:8080/uploads/profile-pics/3-897d321f.jpg)",
+      "Bash(curl -s -o /dev/null -w \"%{http_code}\" http://localhost:8080/uploads/profile-pics/2-e6ef569b.jpg)",
+      "Read(//c//**)",
+      "Bash(curl -s -X POST http://localhost:7474/db/neo4j/tx/commit -H 'Content-Type: application/json' -u neo4j:collabrix123 -d '{:*)",
+      "Bash(curl -s -X POST http://localhost:7474/db/neo4j/tx/commit -H 'Content-Type: application/json' -u neo4j:collabrix123 -d '{\"statements\":[{\"statement\":\"MATCH \\(e:Employee\\) WHERE e.email IN [\\\\\"raj@collabrix.com\\\\\",\\\\\"praveen@collabrix.com\\\\\",\\\\\"gagan@collabrix.com\\\\\",\\\\\"ganesh.gatti@collabrix.com\\\\\"] SET e.account = \\\\\"AI\\\\\" RETURN e.email, e.account\"}]}')",
+      "Bash(curl -s -X POST http://localhost:7474/db/neo4j/tx/commit -H 'Content-Type: application/json' -u neo4j:collabrix123 -d '{\"statements\":[{\"statement\":\"MATCH \\(e:Employee\\) RETURN keys\\(e\\) LIMIT 1\"}]}')",
+      "Bash(curl -s -X POST http://localhost:7474/db/neo4j/tx/commit -H 'Content-Type: application/json' -u neo4j:collabrix123 -d '{\"statements\":[{\"statement\":\"MATCH \\(n\\) RETURN DISTINCT labels\\(n\\) LIMIT 10\"}]}')"
+    ]
+  }
+}
